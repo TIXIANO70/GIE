@@ -28,6 +28,7 @@ export const api = {
     clearSession() {
         localStorage.removeItem(TOKEN_KEY);
         localStorage.removeItem(USER_KEY);
+        sessionStorage.clear();
     },
 
     async request(endpoint, options = {}) {

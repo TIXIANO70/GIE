@@ -79,7 +79,7 @@ app.delete('/api/plantillas/:id', authMiddleware, requireRole('regente'), catego
 app.post('/api/plantillas/:id/usar', authMiddleware, categoriasCtrl.usarPlantilla);
 
 // Gestión de Usuarios y Roles
-app.get('/api/usuarios', authMiddleware, requireRole('regente'), usuariosCtrl.listarUsuarios);
+app.get('/api/usuarios', authMiddleware, usuariosCtrl.listarUsuarios);
 app.post('/api/usuarios', authMiddleware, requireRole('regente'), usuariosCtrl.crearUsuario);
 app.put('/api/usuarios/:id', authMiddleware, requireRole('regente'), usuariosCtrl.actualizarUsuario);
 app.put('/api/usuarios/:id/password', authMiddleware, usuariosCtrl.cambiarPassword);

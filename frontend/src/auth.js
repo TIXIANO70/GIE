@@ -52,6 +52,7 @@ export async function restoreSession() {
 
 export async function clearSession() {
     api.clearSession();
+    sessionStorage.clear();
     _perfil = null;
 }
 

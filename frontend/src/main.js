@@ -124,12 +124,30 @@ async function cargarAlumnos() {
     // Restaurar filtro persistido
     const savedCurso = sessionStorage.getItem('gie_filtro_filtroCurso');
     if (savedCurso) { select.value = savedCurso; }
-    // Poblar filtro de divisiones (informes)
+    // Poblar filtro de divisiones (informes + alumnos)
     const divisiones = [...new Set(alumnos.map(a => a.division).filter(Boolean))].sort();
     const selectDiv = document.getElementById('filtroDivisionInformes');
     if (selectDiv) {
         selectDiv.innerHTML = '<option value="">Todas las divisiones</option>';
         divisiones.forEach(d => selectDiv.innerHTML += `<option value="${d}">${d}</option>`);
+    }
+    const selectDivAlumnos = document.getElementById('filtroAlumnoDivision');
+    if (selectDivAlumnos) {
+        const prevVal = selectDivAlumnos.value;
+        selectDivAlumnos.innerHTML = '<option value="">Todas</option>';
+        divisiones.forEach(d => selectDivAlumnos.innerHTML += `<option value="${d}">${d}</option>`);
+        if (prevVal && divisiones.includes(prevVal)) {
+            selectDivAlumnos.value = prevVal;
+        }
+    }
+    const selectCursoAlumnos = document.getElementById('filtroAlumnoCurso');
+    if (selectCursoAlumnos) {
+        const prevVal = selectCursoAlumnos.value;
+        selectCursoAlumnos.innerHTML = '<option value="">Todos</option>';
+        cursos.forEach(c => selectCursoAlumnos.innerHTML += `<option value="${c}">${c}</option>`);
+        if (prevVal && cursos.includes(prevVal)) {
+            selectCursoAlumnos.value = prevVal;
+        }
     }
     // Poblar filtro de turnos (informes + alumnos)
     const turnos = [...new Set(alumnos.map(a => a.turno).filter(Boolean))].sort();
@@ -303,7 +321,16 @@ async function iniciarApp() {
 
     // Sincronizar alumnos desde Nexus vía Edge Function en segundo plano (solo regentes)
     if (esRegente) {
-        sincronizarAlumnosDesdeEdge().catch(() => {});
+        sincronizarAlumnosDesdeEdge().then(res => {
+            if (res && res.sincronizados > 0) {
+                cargarAlumnos().then(() => {
+                    const sec = document.getElementById('alumnos');
+                    if (sec && !sec.classList.contains('hidden')) {
+                        filtrarAlumnos();
+                    }
+                });
+            }
+        }).catch(() => {});
     }
 
     if (esRegente) {
@@ -636,10 +663,6 @@ function showSection(sectionId) {
                 if (savedTab && savedTab !== tabInformesActivo) {
                     tabInformesActivo = savedTab;
                 }
-                const savedTabAlumnos = sessionStorage.getItem('gie_tab_alumnos');
-                if (savedTabAlumnos && savedTabAlumnos !== tabAlumnosActivo) {
-                    tabAlumnosActivo = savedTabAlumnos;
-                }
                 actualizarTabsInformes();
                 filtrarInformes();
                 ocultarSkeleton('informes');
@@ -664,12 +687,18 @@ function showSection(sectionId) {
                 const savedTabAlumnos = sessionStorage.getItem('gie_tab_alumnos');
                 const esDocenteOPreceptor = getPerfil()?.rol === 'docente' || getPerfil()?.rol === 'preceptor';
                 const esPAT = getPerfil()?.rol === 'pat';
-                if (savedTabAlumnos) {
+                const misCursos = getPerfil()?.cursos || [];
+
+                if (esRegente()) {
+                    tabAlumnosActivo = 'todos';
+                } else if (savedTabAlumnos && (savedTabAlumnos !== 'mis_cursos' || misCursos.length > 0)) {
                     tabAlumnosActivo = savedTabAlumnos;
-                } else if (esDocenteOPreceptor || esPAT) {
+                } else if (esDocenteOPreceptor && misCursos.length > 0) {
                     tabAlumnosActivo = 'mis_cursos';
-                    sessionStorage.setItem('gie_tab_alumnos', 'mis_cursos');
+                } else {
+                    tabAlumnosActivo = 'todos';
                 }
+                sessionStorage.setItem('gie_tab_alumnos', tabAlumnosActivo);
                 actualizarTabsAlumnos();
                 filtrarAlumnos();
                 ocultarSkeleton('alumnos');
