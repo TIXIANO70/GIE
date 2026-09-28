@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  gie-postgres:
+    image: postgres:16-alpine
+    container_name: gie-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gie
+      POSTGRES_USER: gie_user
+      POSTGRES_PASSWORD: gie_local_secure_password
+    volumes:
+      - gie_pg_data:/var/lib/postgresql/data
+      - ./backend/db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./backend/db/seed-initial.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gie_user -d gie"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gie_net
+
+  gie-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: gie-backend
+    restart: unless-stopped
+    environment:
+      PORT: 3001
+      DB_HOST: gie-postgres
+      DB_PORT: 5432
+      DB_NAME: gie
+      DB_USER: gie_user
+      DB_PASSWORD: gie_local_secure_password
+      JWT_SECRET: ${JWT_SECRET:-clave_secreta_jwt_para_gie_onprem_segura}
+      NEXUS_GATEWAY_URL: ${NEXUS_GATEWAY_URL:-http://192.168.1.200:3000/api/v1/gateway}
+      NEXUS_API_KEY: ${NEXUS_API_KEY:-nx_gie_f8a92b3c4d5e6f7a}
+    depends_on:
+      gie-postgres:
+        condition: service_healthy
+    networks:
+      - gie_net
+      - nexus_net
+
+  gie-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: gie-frontend
+    restart: unless-stopped
+    ports:
+      - "8081:80"
+    depends_on:
+      - gie-backend
+    networks:
+      - gie_net
+
+volumes:
+  gie_pg_data:
+
+networks:
+  gie_net:
+    driver: bridge
+  nexus_net:
+    name: nexus_default
+    external: true

@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GIE - Panel de Control</title>
+    <link rel="icon" type="image/png" href="/GIE_logo.png">
+    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/src/styles.css">
+    <script type="module" src="/src/main.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <!-- LOGIN -->
+    <section id="login" class="hidden min-h-screen flex items-center justify-center p-4 animate-fade-in-slow">
+        <div class="w-full max-w-md">
+            <div class="text-center mb-8">
+                <img src="/GIE_logo.png" alt="GIE Logo" class="w-16 h-16 mx-auto mb-4 shadow-lg rounded-xl object-contain">
+                <h1 class="text-2xl font-bold text-slate-800">GIE</h1>
+                <p class="text-slate-500">Gestor de Informes Escolares</p>
+            </div>
+            <div class="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
+                <h2 class="text-xl font-semibold text-slate-800 mb-6 text-center">Iniciar Sesión</h2>
+                <form id="loginForm" class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Correo electrónico</label>
+                        <div class="relative">
+                            <i class="mdi mdi-email-outline absolute left-3 top-3 text-slate-400"></i>
+                            <input type="text" id="email" required class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" placeholder="usuario">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Contraseña</label>
+                        <div class="relative">
+                            <i class="mdi mdi-lock-outline absolute left-3 top-3 text-slate-400"></i>
+                            <input type="password" id="password" required class="w-full pl-10 pr-10 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" placeholder="••••••••">
+                            <button type="button" onclick="togglePassword('password', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                                <i class="mdi mdi-eye-outline"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2">
+                        <i class="mdi mdi-login-variant"></i><span id="txtBtn">Ingresar</span>
+                    </button>
+                </form>
+                <div id="modoDemoBox" class="hidden mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                    <p class="text-xs font-medium text-amber-800 mb-2"><i class="mdi mdi-alert-outline mr-1"></i> Supabase no configurado</p>
+                    <p class="text-xs text-amber-700 mb-3">Las credenciales de Supabase están en modo placeholder. Podés probar la app en modo demo local.</p>
+                    <button id="btn-activar-demo" class="w-full bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold py-2 rounded-lg transition-colors">
+                        <i class="mdi mdi-play-circle-outline mr-2"></i>Usar modo demo local
+                    </button>
+                </div>
+                <div id="demoCreds" class="hidden mt-6 p-4 bg-slate-50 rounded-lg border border-slate-100">
+                    <p class="text-xs font-medium text-slate-500 mb-2">Credenciales de demostración:</p>
+                    <div class="space-y-1 text-xs text-slate-600">
+                        <div class="flex justify-between"><span><i class="mdi mdi-shield-check-outline text-red-500 mr-1"></i>Admin:</span><span class="font-mono bg-white px-2 py-0.5 rounded border">asd123 / asd123</span></div>
+                        <div class="flex justify-between"><span><i class="mdi mdi-crown-outline text-amber-500 mr-1"></i>Regente:</span><span class="font-mono bg-white px-2 py-0.5 rounded border">regente@gie.com / regente123</span></div>
+                        <div class="flex justify-between"><span><i class="mdi mdi-human-male-board text-blue-500 mr-1"></i>Docente:</span><span class="font-mono bg-white px-2 py-0.5 rounded border">docente@gie.com / docente123</span></div>
+                    </div>
+                </div>
+            </div>
+            <p class="text-center text-xs text-slate-400 mt-6">Sistema cerrado • Usuarios creados por la regente</p>
+        </div>
+    </section>
+
+    <!-- APP CONTAINER -->
+    <div id="appContainer" class="hidden">
+
+    <!-- Header superior oscuro -->
+    <header class="fixed top-0 left-0 right-0 h-16 bg-slate-950 text-white z-50 flex items-center justify-between px-4 lg:px-6 border-b border-slate-800">
+        <div class="flex items-center gap-3">
+            <button id="menuBtn" class="lg:hidden p-2 -ml-2 hover:bg-slate-800 rounded-lg transition-colors">
+                <i class="mdi mdi-menu text-xl"></i>
+            </button>
+            <div class="flex items-center gap-2.5">
+                <img src="/GIE_logo.png" alt="GIE" class="w-8 h-8 rounded-lg object-contain">
+                <span class="font-semibold text-lg tracking-tight">GIE</span>
+            </div>
+            <div class="hidden md:flex items-center gap-2 text-sm text-slate-400 ml-4">
+                <span>Panel</span>
+                <i class="mdi mdi-chevron-right text-xs"></i>
+                <span id="headerSectionTitle" class="text-slate-200 font-medium">Dashboard</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <div class="hidden md:block relative">
+                <div class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-sm text-slate-300 min-w-[260px] focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
+                    <i class="mdi mdi-magnify text-slate-400"></i>
+                    <input type="text" id="headerSearchInput" placeholder="Buscar alumnos, informes, docentes..." class="bg-transparent border-none outline-none text-sm w-full placeholder-slate-500">
+                </div>
+                <div id="headerSearchResults" class="hidden absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-slate-200 py-2 max-h-80 overflow-y-auto z-50"></div>
+            </div>
+            <div class="flex items-center gap-3 pl-2 border-l border-slate-800">
+                <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-sm font-bold">
+                    <span id="headerUserInitials">U</span>
+                </div>
+                <div class="hidden lg:block leading-tight">
+                    <p class="text-sm font-medium" id="headerUserName">Usuario</p>
+                    <p class="text-xs text-slate-400 capitalize" id="headerUserRole">rol</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar sidebar-hidden fixed top-16 bottom-0 left-0 z-40 w-64 bg-slate-900 text-white flex flex-col overflow-y-auto border-r border-slate-800">
+        <nav class="flex-1 p-3 space-y-1">
+            <button class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 transition-colors text-left text-sm" data-section="dashboard">
+                <i class="mdi mdi-chart-pie text-lg"></i><span>Dashboard</span>
+            </button>
+            <button class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 transition-colors text-left text-sm" data-section="nuevo">
+                <i class="mdi mdi-plus-circle-outline text-lg"></i><span>Nuevo Informe</span>
+            </button>
+            <button class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 transition-colors text-left text-sm" data-section="informes">
+                <i class="mdi mdi-file-document-outline text-lg"></i><span>Informes</span>
+            </button>
+            <button class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 transition-colors text-left text-sm" data-section="alumnos">
+                <i class="mdi mdi-school-outline text-lg"></i><span>Alumnos</span>
+            </button>
+            <button class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 transition-colors text-left text-sm" data-section="docentes">
+                <i class="mdi mdi-human-male-board text-lg"></i><span>Docentes</span>
+            </button>
+            <button class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 transition-colors text-left text-sm" data-section="usuarios">
+                <i class="mdi mdi-account-group-outline text-lg"></i><span>Usuarios</span>
+            </button>
+            <button class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 transition-colors text-left text-sm" data-section="estadisticas">
+                <i class="mdi mdi-chart-bar text-lg"></i><span>Estadísticas</span>
+            </button>
+            <button class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 transition-colors text-left text-sm" data-section="ajustes">
+                <i class="mdi mdi-cog-outline text-lg"></i><span>Ajustes</span>
+            </button>
+        </nav>
+        <div class="p-3 border-t border-slate-800">
+            <button id="btn-logout" class="w-full flex items-center gap-3 px-3 py-2 text-red-400 hover:bg-slate-800 rounded-lg transition-colors text-sm">
+                <i class="mdi mdi-logout-variant text-lg"></i><span>Cerrar sesión</span>
+            </button>
+        </div>
+    </aside>
+
+    <div id="overlay" class="fixed inset-0 bg-black/50 z-30 hidden lg:hidden"></div>
+
+    <main class="lg:ml-64 min-h-screen pt-16 bg-slate-50">
+        <!-- DASHBOARD -->
+        <section id="dashboard" class="section hidden p-6 max-w-7xl mx-auto animate-fade-in">
+            <!-- Skeleton Dashboard -->
+            <div id="skeleton-dashboard" class="skeleton-container">
+                <div class="skeleton-text h-8 w-64 mb-6"></div>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="skeleton-circle w-10 h-10"></div>
+                            <div class="skeleton-text h-7 w-12"></div>
+                        </div>
+                        <div class="skeleton-text h-3 w-20"></div>
+                    </div>
+                    <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="skeleton-circle w-10 h-10"></div>
+                            <div class="skeleton-text h-7 w-12"></div>
+                        </div>
+                        <div class="skeleton-text h-3 w-20"></div>
+                    </div>
+                    <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="skeleton-circle w-10 h-10"></div>
+                            <div class="skeleton-text h-7 w-12"></div>
+                        </div>
+                        <div class="skeleton-text h-3 w-20"></div>
+                    </div>
+                    <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+                        <div class="flex items-center justify-between mb-2">
+                            <div class="skeleton-circle w-10 h-10"></div>
+                            <div class="skeleton-text h-7 w-12"></div>
+                        </div>
+                        <div class="skeleton-text h-3 w-20"></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-[480px] flex flex-col">
+                        <div class="skeleton-text h-5 w-48 mb-4"></div>
+                        <div class="grid grid-cols-7 gap-1 mb-4">
+                            <div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div>
+                            <div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div>
+                            <div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div>
+                            <div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div>
+                            <div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div><div class="skeleton h-8"></div>
+                        </div>
+                        <div class="space-y-2 flex-1">
+                            <div class="skeleton-text h-10 w-full"></div>
+                            <div class="skeleton-text h-10 w-full"></div>
+                            <div class="skeleton-text h-10 w-full"></div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-[480px] flex flex-col">
+                        <div class="skeleton-text h-5 w-48 mb-4"></div>
+                        <div class="space-y-3 flex-1">
+                            <div class="skeleton-text h-16 w-full"></div>
+                            <div class="skeleton-text h-16 w-full"></div>
+                            <div class="skeleton-text h-16 w-full"></div>
+                            <div class="skeleton-text h-16 w-full"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <div class="skeleton-text h-5 w-32 mb-4"></div>
+                        <div class="space-y-3 max-h-80">
+                            <div class="skeleton-text h-14 w-full"></div>
+                            <div class="skeleton-text h-14 w-full"></div>
+                            <div class="skeleton-text h-14 w-full"></div>
+                            <div class="skeleton-text h-14 w-full"></div>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <div class="skeleton-text h-5 w-40 mb-4"></div>
+                        <div class="skeleton h-64 w-full rounded-full"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="content-dashboard" class="section-content hidden">
+            <!-- Stats cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200 animate-enter animate-delay-100">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center"><i class="mdi mdi-clock-outline text-amber-600 text-lg"></i></div>
+                        <span class="text-2xl font-bold text-slate-800" id="dashPendientes">0</span>
+                    </div>
+                    <p class="text-sm font-medium text-slate-600">Pendientes</p>
+                    <p class="text-xs text-slate-400 mt-1">Informes por revisar</p>
+                </div>
+                <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200 animate-enter animate-delay-150">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center"><i class="mdi mdi-check-circle-outline text-green-600 text-lg"></i></div>
+                        <span class="text-2xl font-bold text-slate-800" id="dashAprobados">0</span>
+                    </div>
+                    <p class="text-sm font-medium text-slate-600">Revisados</p>
+                    <p class="text-xs text-slate-400 mt-1">Aprobados este mes</p>
+                </div>
+                <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200 animate-enter animate-delay-200">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center"><i class="mdi mdi-close-circle-outline text-red-600 text-lg"></i></div>
+                        <span class="text-2xl font-bold text-slate-800" id="dashRechazados">0</span>
+                    </div>
+                    <p class="text-sm font-medium text-slate-600">Derivados</p>
+                    <p class="text-xs text-slate-400 mt-1">En seguimiento</p>
+                </div>
+                <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200 animate-enter animate-delay-250">
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center"><i class="mdi mdi-file-document-outline text-purple-600 text-lg"></i></div>
+                        <span class="text-2xl font-bold text-slate-800" id="dashTotal">0</span>
+                    </div>
+                    <p class="text-sm font-medium text-slate-600">Total</p>
+                    <p class="text-xs text-slate-400 mt-1">Informes registrados</p>
+                </div>
+            </div>
+
+            <!-- Fila 1: Calendario + Pendientes -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-[480px] flex flex-col animate-enter animate-delay-300">
+                    <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2 shrink-0">
+                        <i class="mdi mdi-calendar-check text-blue-500"></i> Reuniones programadas
+                    </h3>
+                    <!-- Calendario -->
+                    <div id="calendarioReuniones" class="mb-4 select-none shrink-0">
+                        <div class="flex justify-between items-center mb-3">
+                            <button id="calPrev" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"><i class="mdi mdi-chevron-left text-xs"></i></button>
+                            <span id="calMesAnio" class="text-sm font-semibold text-slate-700"></span>
+                            <button id="calNext" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"><i class="mdi mdi-chevron-right text-xs"></i></button>
+                        </div>
+                        <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-medium text-slate-400 mb-1">
+                            <div>Dom</div><div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div>
+                        </div>
+                        <div id="calGrid" class="grid grid-cols-7 gap-1"></div>
+                        <button id="calVerTodos" class="mt-2 w-full text-xs text-blue-600 hover:text-blue-800 font-medium py-1 rounded-lg hover:bg-blue-50 transition-colors hidden">
+                            <i class="mdi mdi-format-list-bulleted mr-1"></i> Ver todos los pendientes del mes
+                        </button>
+                    </div>
+                    <div id="dashReuniones" class="space-y-2 flex-1 overflow-y-auto border-t border-slate-100 pt-3 min-h-0"></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-[480px] flex flex-col animate-enter animate-delay-400">
+                    <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2 shrink-0">
+                        <i class="mdi mdi-gavel text-amber-500"></i> Pendientes de revisión
+                    </h3>
+                    <div id="dashPendientesLista" class="space-y-3 flex-1 overflow-y-auto min-h-0"></div>
+                </div>
+            </div>
+
+            <!-- Fila 2: Historial + Gráfico de gravedad -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-6 animate-enter animate-delay-500">
+                    <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                        <i class="mdi mdi-history text-slate-500"></i> Historial reciente
+                    </h3>
+                    <div id="dashHistorial" class="space-y-3 max-h-80 overflow-y-auto"></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 animate-enter animate-delay-600">
+                    <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                        <i class="mdi mdi-chart-pie text-red-500"></i> Distribución por Gravedad
+                    </h3>
+                    <div class="relative h-64">
+                        <canvas id="dashChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            </div>
+        </section>
+
+        <!-- INFORMES -->
+        <section id="informes" class="section hidden p-6 max-w-7xl mx-auto animate-fade-in">
+            <!-- Skeleton Informes -->
+            <div id="skeleton-informes" class="skeleton-container">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                    <div class="skeleton-text h-8 w-32"></div>
+                    <div class="skeleton-text h-10 w-36 rounded-lg"></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                        <div class="skeleton-text h-10 w-full"></div>
+                        <div class="skeleton-text h-10 w-full"></div>
+                        <div class="skeleton-text h-10 w-full"></div>
+                        <div class="skeleton-text h-10 w-full"></div>
+                        <div class="skeleton-text h-10 w-full"></div>
+                        <div class="skeleton-text h-10 w-full"></div>
+                    </div>
+                </div>
+                <div class="flex gap-2 mb-4">
+                    <div class="skeleton-text h-9 w-24 rounded-lg"></div>
+                    <div class="skeleton-text h-9 w-28 rounded-lg"></div>
+                    <div class="skeleton-text h-9 w-28 rounded-lg"></div>
+                </div>
+                <div class="space-y-3">
+                    <div class="skeleton-text h-24 w-full rounded-xl"></div>
+                    <div class="skeleton-text h-24 w-full rounded-xl"></div>
+                    <div class="skeleton-text h-24 w-full rounded-xl"></div>
+                    <div class="skeleton-text h-24 w-full rounded-xl"></div>
+                    <div class="skeleton-text h-24 w-full rounded-xl"></div>
+                </div>
+            </div>
+            <div id="content-informes" class="section-content hidden">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 animate-enter">
+                <div class="flex gap-2">
+                <button onclick="exportarPDFEnBlanco()" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm" title="Imprimir informe en blanco">
+                    <i class="mdi mdi-printer-outline"></i><span class="sm:hidden">Imprimir</span><span class="hidden sm:inline">Imprimir en blanco</span>
+                </button>
+                <button id="btn-nuevo-informe" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm">
+                    <i class="mdi mdi-plus"></i><span>Nuevo Informe</span>
+                </button>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6 animate-enter animate-delay-100">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                    <div class="relative">
+                        <i class="mdi mdi-magnify absolute left-3 top-3 text-slate-400"></i>
+                        <input type="text" id="filtroBusqueda" placeholder="Buscar alumno o título..."
+                            class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <select id="filtroCurso" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="">Todos los cursos</option>
+                    </select>
+                    <select id="filtroDivisionInformes" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="">Todas las divisiones</option>
+                    </select>
+                    <select id="filtroTurnoInformes" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="">Todos los turnos</option>
+                    </select>
+                    <select id="filtroEstado" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="">Todos los estados</option>
+                        <option value="pendiente">Pendiente</option>
+                        <option value="revisado">Revisado</option>
+                        <option value="derivado">Derivado</option>
+                        <option value="archivado">Archivado</option>
+                        <option value="anulado">Anulado</option>
+                    </select>
+                    <select id="filtroInstancia" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="">Todas las instancias</option>
+                        <option value="leve">Leve</option>
+                        <option value="grave">Grave</option>
+                        <option value="muy_grave">Muy Grave</option>
+                        <option value="consejo_aula">Consejo de Aula</option>
+                        <option value="consejo">Consejo Escolar de Convivencia</option>
+                    </select>
+                </div>
+            </div>
+            <div id="tabsInformes" class="grid grid-cols-3 gap-2 mb-4 sm:flex sm:overflow-x-auto animate-enter animate-delay-200">
+                <button id="tabTodos" onclick="setTabInformes('todos')" class="tab-informes w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white flex flex-col items-center sm:flex-row gap-1 sm:gap-2">
+                    Todos <span id="badgeTodos" class="ml-1 text-xs bg-white/20 px-1.5 py-0.5 rounded-full">0</span>
+                </button>
+                <button id="tabPendientes" onclick="setTabInformes('pendientes')" class="tab-informes w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200 flex flex-col items-center sm:flex-row gap-1 sm:gap-2">
+                    Pendientes <span id="badgePendientes" class="ml-1 text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">0</span>
+                </button>
+                <button id="tabRevisados" onclick="setTabInformes('revisados')" class="tab-informes w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200 flex flex-col items-center sm:flex-row gap-1 sm:gap-2">
+                    Revisados <span id="badgeRevisados" class="ml-1 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">0</span>
+                </button>
+                <button id="tabDerivados" onclick="setTabInformes('derivados')" class="tab-informes w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200 flex flex-col items-center sm:flex-row gap-1 sm:gap-2">
+                    Derivados <span id="badgeDerivados" class="ml-1 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">0</span>
+                </button>
+                <button id="tabArchivados" onclick="setTabInformes('archivados')" class="tab-informes w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200 flex flex-col items-center sm:flex-row gap-1 sm:gap-2">
+                    Archivados <span id="badgeArchivados" class="ml-1 text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full">0</span>
+                </button>
+                <button id="tabAnulados" onclick="setTabInformes('anulados')" class="tab-informes w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200 flex flex-col items-center sm:flex-row gap-1 sm:gap-2">
+                    Anulados <span id="badgeAnulados" class="ml-1 text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full">0</span>
+                </button>
+            </div>
+            <div id="listaInformes" class="space-y-3"></div>
+            <div id="sinResultados" class="hidden text-center py-12 text-slate-400">
+                <i class="mdi mdi-inbox-outline text-4xl mb-3"></i>
+                <p>No se encontraron informes</p>
+            </div>
+            </div>
+        </section>
+
+        <!-- NUEVO/EDITAR INFORME -->
+        <section id="nuevo" class="section hidden p-6 max-w-3xl mx-auto animate-fade-in">
+            <div class="flex items-center gap-3 mb-6">
+                <button id="btn-volver-nuevo" class="text-slate-400 hover:text-slate-600"><i class="mdi mdi-arrow-left text-xl"></i></button>
+                <h1 class="text-2xl font-bold text-slate-800" id="tituloForm">Nuevo Informe</h1>
+            </div>
+            <form id="formInforme" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
+                <input type="hidden" id="editId">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Alumno *</label>
+                    <div id="buscadorAlumno">
+                        <div class="relative">
+                            <input type="text" id="searchAlumno" placeholder="Escriba para buscar alumno..." maxlength="100"
+                                class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" autocomplete="off">
+                            <div id="resultadosAlumno" class="absolute z-10 w-full bg-white border border-slate-200 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto hidden"></div>
+                            <input type="hidden" id="alumnoId" required>
+                        </div>
+                    </div>
+                    <div id="alumnoSeleccionado" class="hidden mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
+                        <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold"><i class="mdi mdi-account-outline"></i></div>
+                        <div>
+                            <p class="font-medium text-sm" id="alumnoNombre"></p>
+                            <p class="text-xs text-slate-500" id="alumnoCurso"></p>
+                        </div>
+                        <button type="button" id="btn-limpiar-alumno" class="ml-auto text-slate-400 hover:text-red-500"><i class="mdi mdi-close"></i></button>
+                    </div>
+                    <button type="button" id="btn-cambiar-alumno" onclick="limpiarAlumno()" class="hidden mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                        <i class="mdi mdi-swap-horizontal"></i> Cambiar alumno
+                    </button>
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-sm font-medium text-slate-700">Plantilla rápida <span class="text-xs text-slate-400 font-normal">(opcional)</span></label>
+                        <button type="button" onclick="abrirModalPlantillas()" class="text-xs text-blue-600 hover:text-blue-800 font-medium"><i class="mdi mdi-cog-outline mr-1"></i>Gestionar</button>
+                    </div>
+                    <select id="plantillaInforme" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="">Seleccionar plantilla...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Título del informe *</label>
+                    <input type="text" id="titulo" required maxlength="200"
+                        class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        placeholder="Ej: Falta de respeto en clase">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Descripción de la problemática *</label>
+                    <textarea id="resumen" required rows="4" maxlength="2000"
+                        class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                        placeholder="Describa los hechos detalladamente..."></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Observaciones</label>
+                    <textarea id="observaciones" rows="3" maxlength="1000"
+                        class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                        placeholder="Observaciones adicionales (opcional)..."></textarea>
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-sm font-medium text-slate-700">Categoría *</label>
+                        <button type="button" onclick="abrirModalCategorias()" class="text-xs text-blue-600 hover:text-blue-800 font-medium"><i class="mdi mdi-cog-outline mr-1"></i>Gestionar</button>
+                    </div>
+                    <select id="categoriaInforme" required class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="">Seleccione...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Tipo de instancia *</label>
+                    <select id="instancia" required class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="">Seleccione...</option>
+                        <option value="leve">Leve</option>
+                        <option value="grave">Grave</option>
+                        <option value="muy_grave">Muy Grave</option>
+                        <option value="consejo_aula">Consejo de Aula</option>
+                        <option value="consejo">Consejo Escolar de Convivencia</option>
+                    </select>
+                </div>
+                <div class="flex gap-3 pt-4">
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition-colors shadow-sm">
+                        <i class="mdi mdi-content-save-outline mr-2"></i><span id="txtBtnGuardar">Guardar Informe</span>
+                    </button>
+                    <button type="button" id="btn-cancelar-form" class="px-6 py-2.5 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">Cancelar</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- ALUMNOS -->
+        <section id="alumnos" class="section hidden p-6 max-w-5xl mx-auto animate-fade-in">
+            <!-- Skeleton Alumnos -->
+            <div id="skeleton-alumnos" class="skeleton-container">
+                <div class="skeleton-text h-8 w-32 mb-6"></div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                        <div class="skeleton-text h-9 w-full"></div>
+                        <div class="skeleton-text h-9 w-full"></div>
+                        <div class="skeleton-text h-9 w-full"></div>
+                        <div class="skeleton-text h-9 w-full"></div>
+                        <div class="skeleton-text h-9 w-full"></div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200"><div class="flex items-center gap-3"><div class="skeleton-circle w-10 h-10"></div><div class="flex-1 space-y-2"><div class="skeleton-text h-4 w-3/4"></div><div class="skeleton-text h-3 w-1/2"></div></div></div></div>
+                    <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200"><div class="flex items-center gap-3"><div class="skeleton-circle w-10 h-10"></div><div class="flex-1 space-y-2"><div class="skeleton-text h-4 w-3/4"></div><div class="skeleton-text h-3 w-1/2"></div></div></div></div>
+                    <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200"><div class="flex items-center gap-3"><div class="skeleton-circle w-10 h-10"></div><div class="flex-1 space-y-2"><div class="skeleton-text h-4 w-3/4"></div><div class="skeleton-text h-3 w-1/2"></div></div></div></div>
+                    <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200"><div class="flex items-center gap-3"><div class="skeleton-circle w-10 h-10"></div><div class="flex-1 space-y-2"><div class="skeleton-text h-4 w-3/4"></div><div class="skeleton-text h-3 w-1/2"></div></div></div></div>
+                    <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200"><div class="flex items-center gap-3"><div class="skeleton-circle w-10 h-10"></div><div class="flex-1 space-y-2"><div class="skeleton-text h-4 w-3/4"></div><div class="skeleton-text h-3 w-1/2"></div></div></div></div>
+                    <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200"><div class="flex items-center gap-3"><div class="skeleton-circle w-10 h-10"></div><div class="flex-1 space-y-2"><div class="skeleton-text h-4 w-3/4"></div><div class="skeleton-text h-3 w-1/2"></div></div></div></div>
+                </div>
+            </div>
+            <div id="content-alumnos" class="section-content hidden">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            </div>
+            <div id="tabsAlumnos" class="flex gap-2 mb-4 overflow-x-auto hidden">
+                <button id="tabAlumnosTodos" onclick="setTabAlumnos('todos')" class="tab-alumnos px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white">
+                    Todos
+                </button>
+                <button id="tabAlumnosMisCursos" onclick="setTabAlumnos('mis_cursos')" class="tab-alumnos hidden px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200">
+                    Mis cursos
+                </button>
+                <button id="tabAlumnosMisAlumnos" onclick="setTabAlumnos('mis_alumnos')" class="tab-alumnos hidden px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200">
+                    Alumnos PAT
+                </button>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Nombre o Apellido</label>
+                        <input type="text" id="filtroAlumnoNombre" placeholder="Ej: Barreto Cristian" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Año</label>
+                        <select id="filtroAlumnoCurso" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
+                            <option value="">Todos</option>
+                            <option value="1°">1°</option>
+                            <option value="2°">2°</option>
+                            <option value="3°">3°</option>
+                            <option value="4°">4°</option>
+                            <option value="5°">5°</option>
+                            <option value="6°">6°</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">División</label>
+                        <select id="filtroAlumnoDivision" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
+                            <option value="">Todas</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                            <option value="7">7</option>
+                            <option value="8">8</option>
+                            <option value="9">9</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Turno</label>
+                        <select id="filtroAlumnoTurno" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
+                            <option value="">Todos</option>
+                            <option value="Mañana">Mañana</option>
+                            <option value="Tarde">Tarde</option>
+                            <option value="Noche">Noche</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Especialidad</label>
+                        <select id="filtroAlumnoEspecialidad" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
+                            <option value="">Todas</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Ordenar por</label>
+                        <select id="ordenAlumnos" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
+                            <option value="informes_desc">Más informes</option>
+                            <option value="informes_asc">Menos informes</option>
+                            <option value="apellido_asc">Apellido A-Z</option>
+                            <option value="apellido_desc">Apellido Z-A</option>
+                            <option value="nombre_asc">Nombre A-Z</option>
+                            <option value="curso_asc">Año ↑</option>
+                            <option value="curso_desc">Año ↓</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div id="listaAlumnos" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+            <div id="alumnosEmpty" class="hidden text-center py-12">
+                <i class="mdi mdi-magnify text-4xl text-slate-300 mb-3"></i>
+                <p class="text-slate-500">No se encontraron alumnos</p>
+            </div>
+            </div>
+        </section>
+
+        <!-- DOCENTES -->
+        <section id="docentes" class="section hidden p-6 max-w-6xl mx-auto animate-fade-in">
+            <!-- Skeleton Docentes -->
+            <div id="skeleton-docentes" class="skeleton-container">
+                <div class="skeleton-text h-8 w-40 mb-6"></div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="skeleton-text h-9 w-full"></div>
+                        <div class="skeleton-text h-9 w-full"></div>
+                        <div class="skeleton-text h-9 w-full"></div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="hidden md:block">
+                        <div class="flex gap-2 p-3 bg-slate-50 border-b border-slate-100">
+                            <div class="skeleton-text h-4 w-24"></div>
+                            <div class="skeleton-text h-4 w-32"></div>
+                            <div class="skeleton-text h-4 w-20"></div>
+                            <div class="skeleton-text h-4 w-16"></div>
+                            <div class="skeleton-text h-4 w-16"></div>
+                            <div class="skeleton-text h-4 w-16"></div>
+                            <div class="skeleton-text h-4 w-16"></div>
+                        </div>
+                        <div class="divide-y divide-slate-100">
+                            <div class="flex gap-2 p-3"><div class="skeleton-text h-4 w-24"></div><div class="skeleton-text h-4 w-32"></div><div class="skeleton-text h-4 w-20"></div><div class="skeleton-text h-4 w-16"></div><div class="skeleton-text h-4 w-16"></div><div class="skeleton-text h-4 w-16"></div><div class="skeleton-text h-4 w-16"></div></div>
+                            <div class="flex gap-2 p-3"><div class="skeleton-text h-4 w-24"></div><div class="skeleton-text h-4 w-32"></div><div class="skeleton-text h-4 w-20"></div><div class="skeleton-text h-4 w-16"></div><div class="skeleton-text h-4 w-16"></div><div class="skeleton-text h-4 w-16"></div><div class="skeleton-text h-4 w-16"></div></div>
+                            <div class="flex gap-2 p-3"><div class="skeleton-text h-4 w-24"></div><div class="skeleton-text h-4 w-32"></div><div class="skeleton-text h-4 w-20"></div><div class="skeleton-text h-4 w-16"></div><div class="skeleton-text h-4 w-16"></div><div class="skeleton-text h-4 w-16"></div><div class="skeleton-text h-4 w-16"></div></div>
+                        </div>
+                    </div>
+                    <div class="md:hidden divide-y divide-slate-100">
+                        <div class="p-3 space-y-2"><div class="skeleton-text h-4 w-3/4"></div><div class="skeleton-text h-3 w-1/2"></div><div class="skeleton-text h-3 w-2/3"></div></div>
+                        <div class="p-3 space-y-2"><div class="skeleton-text h-4 w-3/4"></div><div class="skeleton-text h-3 w-1/2"></div><div class="skeleton-text h-3 w-2/3"></div></div>
+                    </div>
+                </div>
+            </div>
+            <div id="content-docentes" class="section-content hidden">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Buscar</label>
+                            <input type="text" id="filtroDocenteNombre" placeholder="Nombre o email" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Rol</label>
+                            <select id="filtroDocenteRol" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
+                                <option value="">Todos</option>
+                                <option value="docente">Docente</option>
+                                <option value="preceptor">Preceptor</option>
+                                <option value="doe">DOE</option>
+                                <option value="regente">Regente</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Ordenar por</label>
+                            <select id="ordenDocentes" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
+                                <option value="nombre_asc">Nombre A-Z</option>
+                                <option value="nombre_desc">Nombre Z-A</option>
+                                <option value="rol_asc">Rol A-Z</option>
+                                <option value="rol_desc">Rol Z-A</option>
+                                <option value="informes_desc">Más informes</option>
+                                <option value="informes_asc">Menos informes</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="hidden md:block overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-slate-50 text-slate-600 font-medium">
+                                <tr>
+                                    <th class="px-4 py-3">Nombre</th>
+                                    <th class="px-4 py-3">Email</th>
+                                    <th class="px-4 py-3">Rol</th>
+                                    <th class="px-4 py-3 text-center">Creados</th>
+                                    <th class="px-4 py-3 text-center">Pendientes</th>
+                                    <th class="px-4 py-3 text-center">Revisados</th>
+                                    <th class="px-4 py-3 text-center">Derivados</th>
+                                    <th class="px-4 py-3 text-center">Finales</th>
+                                </tr>
+                            </thead>
+                            <tbody id="listaDocentesDesktop" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                    <div id="listaDocentesMobile" class="md:hidden divide-y divide-slate-100"></div>
+                </div>
+                <div id="docentesEmpty" class="hidden text-center py-12">
+                    <i class="mdi mdi-magnify text-4xl text-slate-300 mb-3"></i>
+                    <p class="text-slate-500">No se encontraron docentes</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- USUARIOS -->
+        <section id="usuarios" class="section hidden p-6 max-w-6xl mx-auto animate-fade-in">
+            <!-- Skeleton Usuarios -->
+            <div id="skeleton-usuarios" class="skeleton-container">
+                <div class="skeleton-text h-8 w-48 mb-6"></div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                        <div class="skeleton-text h-9 w-full"></div>
+                        <div class="skeleton-text h-9 w-full"></div>
+                        <div class="skeleton-text h-9 w-full"></div>
+                        <div class="skeleton-text h-9 w-full"></div>
+                        <div class="skeleton-text h-9 w-full"></div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="hidden md:block">
+                        <div class="flex gap-2 p-3 bg-slate-50 border-b border-slate-100">
+                            <div class="skeleton-text h-4 w-32"></div>
+                            <div class="skeleton-text h-4 w-40"></div>
+                            <div class="skeleton-text h-4 w-24"></div>
+                            <div class="skeleton-text h-4 w-20"></div>
+                            <div class="skeleton-text h-4 w-24"></div>
+                        </div>
+                        <div class="divide-y divide-slate-100">
+                            <div class="flex gap-2 p-3"><div class="skeleton-text h-4 w-32"></div><div class="skeleton-text h-4 w-40"></div><div class="skeleton-text h-4 w-24"></div><div class="skeleton-text h-4 w-20"></div><div class="skeleton-text h-4 w-24"></div></div>
+                            <div class="flex gap-2 p-3"><div class="skeleton-text h-4 w-32"></div><div class="skeleton-text h-4 w-40"></div><div class="skeleton-text h-4 w-24"></div><div class="skeleton-text h-4 w-20"></div><div class="skeleton-text h-4 w-24"></div></div>
+                        </div>
+                    </div>
+                    <div class="md:hidden divide-y divide-slate-100">
+                        <div class="p-3 space-y-2"><div class="skeleton-text h-4 w-3/4"></div><div class="skeleton-text h-3 w-1/2"></div><div class="skeleton-text h-3 w-2/3"></div></div>
+                        <div class="p-3 space-y-2"><div class="skeleton-text h-4 w-3/4"></div><div class="skeleton-text h-3 w-1/2"></div><div class="skeleton-text h-3 w-2/3"></div></div>
+                    </div>
+                </div>
+            </div>
+            <div id="content-usuarios" class="section-content hidden">
+                <!-- Formulario de creación -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+                    <h2 class="text-sm font-semibold text-slate-700 mb-3">Crear nuevo usuario</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
+                        <div class="lg:col-span-1">
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Nombre</label>
+                            <input type="text" id="newUsuarioNombre" placeholder="Nombre" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                        <div class="lg:col-span-1">
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Apellido</label>
+                            <input type="text" id="newUsuarioApellido" placeholder="Apellido" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                        <div class="lg:col-span-2">
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Email</label>
+                            <input type="email" id="newUsuarioEmail" placeholder="usuario@escuela.edu.ar" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                        <div class="lg:col-span-1">
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Contraseña</label>
+                            <input type="password" id="newUsuarioPassword" placeholder="Mínimo 6 caracteres" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                        <div class="lg:col-span-1">
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Rol</label>
+                            <select id="newUsuarioRol" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
+                                <option value="docente">Docente</option>
+                                <option value="preceptor">Preceptor</option>
+                                <option value="doe">DOE</option>
+                                <option value="pat">PAT</option>
+                                <option value="regente">Regente</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex justify-end">
+                        <button onclick="crearUsuario()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            <i class="mdi mdi-plus mr-2"></i>Crear usuario
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabla de usuarios -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="hidden md:block overflow-x-auto">
+                        <table class="w-full table-fixed text-sm text-left">
+                            <thead class="bg-slate-50 text-slate-600 font-medium">
+                                <tr>
+                                    <th class="px-4 py-3 w-[22%]">Nombre</th>
+                                    <th class="px-4 py-3 w-[30%]">Email</th>
+                                    <th class="px-4 py-3 w-[12%]">Rol</th>
+                                    <th class="px-4 py-3 w-[12%]">Estado</th>
+                                    <th class="px-4 py-3 text-center w-[24%]">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="listaUsuariosDesktop" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                    <div id="listaUsuariosMobile" class="md:hidden divide-y divide-slate-100"></div>
+                </div>
+                <div id="usuariosEmpty" class="hidden text-center py-12">
+                    <i class="mdi mdi-magnify text-4xl text-slate-300 mb-3"></i>
+                    <p class="text-slate-500">No se encontraron usuarios</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ESTADÍSTICAS -->
+        <section id="estadisticas" class="section hidden p-6 max-w-7xl mx-auto animate-fade-in">
+            <!-- Skeleton Estadísticas -->
+            <div id="skeleton-estadisticas" class="skeleton-container">
+                <div class="skeleton-text h-8 w-40 mb-6"></div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <div class="skeleton-text h-5 w-48 mb-4"></div>
+                        <div class="skeleton h-64 w-full rounded-lg"></div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <div class="skeleton-text h-5 w-48 mb-4"></div>
+                        <div class="skeleton h-64 w-full rounded-lg"></div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                    <div class="skeleton-text h-5 w-56 mb-4"></div>
+                    <div class="skeleton h-48 w-full rounded-lg"></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <div class="skeleton-text h-5 w-56 mb-4"></div>
+                    <div class="space-y-3">
+                        <div class="flex gap-2"><div class="skeleton-text h-4 w-8"></div><div class="skeleton-text h-4 flex-1"></div><div class="skeleton-text h-4 w-16"></div><div class="skeleton-text h-4 w-12"></div><div class="skeleton-text h-4 w-12"></div><div class="skeleton-text h-4 w-12"></div><div class="skeleton-text h-4 w-12"></div></div>
+                        <div class="flex gap-2"><div class="skeleton-text h-4 w-8"></div><div class="skeleton-text h-4 flex-1"></div><div class="skeleton-text h-4 w-16"></div><div class="skeleton-text h-4 w-12"></div><div class="skeleton-text h-4 w-12"></div><div class="skeleton-text h-4 w-12"></div><div class="skeleton-text h-4 w-12"></div></div>
+                        <div class="flex gap-2"><div class="skeleton-text h-4 w-8"></div><div class="skeleton-text h-4 flex-1"></div><div class="skeleton-text h-4 w-16"></div><div class="skeleton-text h-4 w-12"></div><div class="skeleton-text h-4 w-12"></div><div class="skeleton-text h-4 w-12"></div><div class="skeleton-text h-4 w-12"></div></div>
+                        <div class="flex gap-2"><div class="skeleton-text h-4 w-8"></div><div class="skeleton-text h-4 flex-1"></div><div class="skeleton-text h-4 w-16"></div><div class="skeleton-text h-4 w-12"></div><div class="skeleton-text h-4 w-12"></div><div class="skeleton-text h-4 w-12"></div><div class="skeleton-text h-4 w-12"></div></div>
+                        <div class="flex gap-2"><div class="skeleton-text h-4 w-8"></div><div class="skeleton-text h-4 flex-1"></div><div class="skeleton-text h-4 w-16"></div><div class="skeleton-text h-4 w-12"></div><div class="skeleton-text h-4 w-12"></div><div class="skeleton-text h-4 w-12"></div><div class="skeleton-text h-4 w-12"></div></div>
+                    </div>
+                </div>
+            </div>
+            <div id="content-estadisticas" class="section-content hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="font-semibold text-slate-700 mb-4">Informes por Año/Grado</h3>
+                    <p class="text-xs text-slate-400 mb-2">Tocá una barra para ver desglose por división</p>
+                    <div class="h-64"><canvas id="chartCursos"></canvas></div>
+                    <div id="drillDownAnio" class="hidden mt-4 pt-4 border-t border-slate-100">
+                        <div class="flex items-center justify-between mb-3">
+                            <h4 id="drillDownTitulo" class="font-semibold text-slate-700 text-sm"></h4>
+                            <button onclick="cerrarDrillDownAnio()" class="text-xs text-slate-400 hover:text-slate-600"><i class="mdi mdi-close"></i> Cerrar</button>
+                        </div>
+                        <div id="drillDownContenido" class="space-y-1"></div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="font-semibold text-slate-700 mb-4">Informes por Categoría</h3>
+                    <canvas id="chartTipos" width="300" height="300" class="mx-auto"></canvas>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                    <h3 class="font-semibold text-slate-700" id="tituloTendencia">Tendencia Últimos 30 Días</h3>
+                    <div class="flex gap-1 bg-slate-100 p-1 rounded-lg">
+                        <button onclick="cambiarPeriodoTendencia(7)" class="periodo-btn px-3 py-1 text-xs font-medium rounded-md transition-colors text-slate-600 hover:bg-white hover:shadow-sm" data-dias="7">7d</button>
+                        <button onclick="cambiarPeriodoTendencia(30)" class="periodo-btn px-3 py-1 text-xs font-medium rounded-md transition-colors bg-white shadow-sm text-slate-800" data-dias="30">30d</button>
+                        <button onclick="cambiarPeriodoTendencia(60)" class="periodo-btn px-3 py-1 text-xs font-medium rounded-md transition-colors text-slate-600 hover:bg-white hover:shadow-sm" data-dias="60">60d</button>
+                        <button onclick="cambiarPeriodoTendencia(180)" class="periodo-btn px-3 py-1 text-xs font-medium rounded-md transition-colors text-slate-600 hover:bg-white hover:shadow-sm" data-dias="180">180d</button>
+                        <button onclick="cambiarPeriodoTendencia(365)" class="periodo-btn px-3 py-1 text-xs font-medium rounded-md transition-colors text-slate-600 hover:bg-white hover:shadow-sm" data-dias="365">365d</button>
+                    </div>
+                </div>
+                <canvas id="chartMensual"></canvas>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                <h3 class="font-semibold text-slate-700 mb-4">Informes por Curso</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-slate-50 text-slate-600 font-medium">
+                            <tr>
+                                <th class="px-4 py-3 text-center w-12">#</th>
+                                <th class="px-4 py-3">Curso</th>
+                                <th class="px-4 py-3 text-center">Total</th>
+                                <th class="px-4 py-3 text-center">Leves</th>
+                                <th class="px-4 py-3 text-center">Graves</th>
+                                <th class="px-4 py-3 text-center">Muy Graves</th>
+                                <th class="px-4 py-3 text-center">Consejo de Aula</th>
+                                <th class="px-4 py-3 text-center">Consejo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bodyInformesPorCurso" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h3 class="font-semibold text-slate-700 mb-4">Alumnos con más Informes</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-slate-50 text-slate-600 font-medium">
+                            <tr>
+                                <th class="px-4 py-3 text-center w-12">#</th>
+                                <th class="px-4 py-3">Alumno</th>
+                                <th class="px-4 py-3">Curso</th>
+                                <th class="px-4 py-3 text-center">Total</th>
+                                <th class="px-4 py-3 text-center">Leves</th>
+                                <th class="px-4 py-3 text-center">Graves</th>
+                                <th class="px-4 py-3 text-center">Muy Graves</th>
+                                <th class="px-4 py-3 text-center">Consejo de Aula</th>
+                                <th class="px-4 py-3 text-center">Consejo</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bodyTopAlumnos" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+            </div>
+        </section>
+
+        <!-- AJUSTES -->
+        <section id="ajustes" class="section hidden p-6 max-w-4xl mx-auto animate-fade-in">
+            <!-- Skeleton Ajustes -->
+            <div id="skeleton-ajustes" class="skeleton-container">
+                <div class="skeleton-text h-8 w-32 mb-6"></div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                    <div class="skeleton-text h-5 w-40 mb-4"></div>
+                    <div class="space-y-3">
+                        <div class="flex items-end justify-between mb-2">
+                            <div class="skeleton-text h-4 w-32"></div>
+                            <div class="skeleton-text h-4 w-12"></div>
+                        </div>
+                        <div class="skeleton h-4 w-full rounded-full"></div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                    <div class="skeleton-text h-5 w-48 mb-4"></div>
+                    <div class="space-y-3">
+                        <div class="flex items-start gap-2">
+                            <div class="skeleton h-4 w-4 rounded-full mt-0.5"></div>
+                            <div class="skeleton-text h-4 w-3/4"></div>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <div class="skeleton h-4 w-4 rounded-full mt-0.5"></div>
+                            <div class="skeleton-text h-4 w-2/3"></div>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <div class="skeleton h-4 w-4 rounded-full mt-0.5"></div>
+                            <div class="skeleton-text h-4 w-5/6"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <div class="skeleton-text h-5 w-32 mb-4"></div>
+                    <div class="space-y-2">
+                        <div class="skeleton-text h-4 w-3/4"></div>
+                        <div class="skeleton-text h-4 w-1/2"></div>
+                        <div class="skeleton-text h-4 w-2/3"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="content-ajustes" class="section-content hidden">
+            <!-- Espacio de Base de Datos -->
+            <div id="cardDbSpace" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                    <i class="mdi mdi-database-outline text-blue-500"></i> Base de datos
+                </h3>
+                <div class="space-y-3">
+                    <div class="flex items-end justify-between mb-2">
+                        <p class="text-sm text-slate-700">
+                            <span id="dbSpaceUsedLabel" class="font-semibold text-slate-900">—</span>
+                            <span class="text-slate-500"> de </span>
+                            <span id="dbSpaceTotalLabel" class="font-semibold text-slate-900">—</span>
+                            <span class="text-slate-500"> usados</span>
+                        </p>
+                        <p id="dbSpacePercentLabel" class="text-sm font-bold text-slate-800">0%</p>
+                    </div>
+                    <div class="w-full bg-slate-100 rounded-full h-4 overflow-hidden">
+                        <div id="dbSpaceBar" class="h-full rounded-full transition-all duration-500 bg-blue-500" style="width: 0%"></div>
+                    </div>
+                    <p id="dbSpaceAlert" class="hidden text-xs font-medium text-red-600"><i class="mdi mdi-alert-outline mr-1"></i> Se alcanzó el umbral de advertencia</p>
+                </div>
+            </div>
+
+            <!-- Mis cursos (visible para docentes/preceptores) -->
+            <div id="cardMisCursos" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                    <i class="mdi mdi-human-male-board text-blue-500"></i> Mis cursos
+                </h3>
+                <div class="flex gap-2 mb-3">
+                    <select id="ajustesCursoAnio" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                        <option value="">Año</option>
+                        <option value="1°">1°</option>
+                        <option value="2°">2°</option>
+                        <option value="3°">3°</option>
+                        <option value="4°">4°</option>
+                        <option value="5°">5°</option>
+                        <option value="6°">6°</option>
+                    </select>
+                    <select id="ajustesCursoDivision" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                        <option value="">Div</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                        <option value="9">9</option>
+                    </select>
+                    <button onclick="agregarMiCurso()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">Agregar</button>
+                </div>
+                <div id="ajustesCursosLista" class="flex flex-wrap gap-2"></div>
+            </div>
+
+            <!-- Mis alumnos PAT (visible solo para PAT) -->
+            <div id="cardMisAlumnosPAT" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                    <i class="mdi mdi-account-group-outline text-blue-500"></i> Mis alumnos PAT
+                </h3>
+                <div class="relative mb-3">
+                    <input type="text" id="inputBuscarAlumnoPAT" placeholder="Buscar alumno..." oninput="buscarAlumnoPAT(this.value)" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    <div id="resultadosAlumnoPAT" class="hidden absolute z-50 w-full bg-white border border-slate-200 rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto"></div>
+                </div>
+                <div id="ajustesAlumnosPATLista" class="flex flex-wrap gap-2"></div>
+            </div>
+
+            <!-- Novedades de la versión -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                    <i class="mdi mdi-sparkles text-amber-500"></i> Novedades v1.6.2
+                </h3>
+                <ul class="space-y-2 text-sm text-slate-600">
+                    <li class="flex items-start gap-2">
+                        <i class="mdi mdi-check-circle-outline text-green-500 mt-0.5 text-xs"></i>
+                        <span><strong>Sincronización automática</strong> de alumnos desde el sistema de gestión escolar.</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="mdi mdi-check-circle-outline text-green-500 mt-0.5 text-xs"></i>
+                        <span>Sincronización de <strong>especialidad</strong> de cada alumno desde Nexus (Computación, Automotores, etc.).</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="mdi mdi-check-circle-outline text-green-500 mt-0.5 text-xs"></i>
+                        <span>Gestor de <strong>categorías personalizadas</strong> para informes.</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="mdi mdi-check-circle-outline text-green-500 mt-0.5 text-xs"></i>
+                        <span>Opción de <strong>desarchivar y desanular</strong> informes (los regentes pueden volverlos a revisados).</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="mdi mdi-check-circle-outline text-green-500 mt-0.5 text-xs"></i>
+                        <span>Sección <strong>Recientes</strong> en la lista de informes con botón "Mostrar más".</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="mdi mdi-check-circle-outline text-green-500 mt-0.5 text-xs"></i>
+                        <span>Corrección del filtro de tabs <strong>Archivados / Anulados</strong>.</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="mdi mdi-check-circle-outline text-green-500 mt-0.5 text-xs"></i>
+                        <span><strong>Derivación de informes</strong> a cualquier usuario (incluyendo DOE y PAT) con seguimiento en historial.</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="mdi mdi-check-circle-outline text-green-500 mt-0.5 text-xs"></i>
+                        <span><strong>Historial prolijo</strong> con badges de acción, actor y detalle por cada movimiento del informe.</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="mdi mdi-check-circle-outline text-green-500 mt-0.5 text-xs"></i>
+                        <span>Nueva instancia: <strong>Consejo de Aula</strong> (entre Muy Grave y Consejo Escolar).</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="mdi mdi-check-circle-outline text-green-500 mt-0.5 text-xs"></i>
+                        <span><strong>Numeración automática de informes</strong>: cada informe tiene un número único con formato AÑO + SECUENCIAL (ej: Informe N° 2600001).</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="mdi mdi-check-circle-outline text-green-500 mt-0.5 text-xs"></i>
+                        <span><strong>Nuevo sistema de observaciones por alumno</strong>: registro de acciones, entrevistas, seguimientos y tipos personalizados con fecha de evento, autor y gestión de tipos desde la vista del alumno.</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                    <i class="mdi mdi-information-outline text-blue-500"></i> Acerca de
+                </h3>
+                <div class="space-y-3 text-sm text-slate-600">
+                    <p><strong class="text-slate-800">GIE - Gestor de Informes Escolares</strong></p>
+                    <p>Creada por:</p>
+                    <ul class="list-disc list-inside space-y-1 ml-2">
+                        <li>Hung Nicolas</li>
+                        <li>Espinoza Tiziano</li>
+                        <li>Marquez Cristhian</li>
+                        <li>Enrique Santino</li>
+                    </ul>
+                    <p class="pt-2 text-slate-500">Versión <span class="font-mono font-medium text-slate-700">v1.6.2</span></p>
+                    <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <p class="text-sm text-amber-800"><i class="mdi mdi-bug-outline mr-2"></i><strong>¿Encontraste un error?</strong></p>
+                        <p class="text-sm text-amber-700 mt-1">En caso de errores o fallas, notificar a <a href="mailto:nicohung0302@gmail.com" class="underline hover:text-amber-900 font-medium">nicohung0302@gmail.com</a></p>
+                    </div>
+                </div>
+            </div>
+            </div>
+        </section>
+
+        <!-- VISTA ALUMNO -->
+        <section id="vistaAlumno" class="section hidden p-6 max-w-4xl mx-auto animate-fade-in">
+            <!-- Skeleton Vista Alumno -->
+            <div id="skeleton-vistaAlumno" class="skeleton-container">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="skeleton-text h-6 w-6"></div>
+                    <div class="skeleton-text h-8 w-56"></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                    <div class="flex items-center gap-4">
+                        <div class="skeleton-circle w-16 h-16"></div>
+                        <div class="flex-1 space-y-2">
+                            <div class="skeleton-text h-5 w-48"></div>
+                            <div class="skeleton-text h-4 w-32"></div>
+                            <div class="skeleton-text h-4 w-24"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <div class="skeleton-text h-5 w-40 mb-4"></div>
+                        <div class="skeleton h-64 w-full rounded-lg"></div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <div class="skeleton-text h-5 w-32 mb-4"></div>
+                        <div class="skeleton h-64 w-full rounded-lg"></div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col">
+                    <div class="skeleton-text h-5 w-40 mb-4"></div>
+                    <div class="space-y-3">
+                        <div class="skeleton-text h-20 w-full rounded-lg"></div>
+                        <div class="skeleton-text h-20 w-full rounded-lg"></div>
+                        <div class="skeleton-text h-20 w-full rounded-lg"></div>
+                        <div class="skeleton-text h-20 w-full rounded-lg"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="content-vistaAlumno" class="section-content hidden">
+            <div class="flex items-center gap-3 mb-6">
+                <button id="btn-volver-alumno" class="text-slate-400 hover:text-slate-600"><i class="mdi mdi-arrow-left text-xl"></i></button>
+                <h1 class="text-2xl font-bold text-slate-800">Resumen del Alumno</h1>
+            </div>
+            <div id="tarjetaAlumno" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                <!-- Se llena dinámicamente -->
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="font-semibold text-slate-700 mb-4">Distribución por Gravedad</h3>
+                    <div class="h-64"><canvas id="chartAlumno"></canvas></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="font-semibold text-slate-700 mb-4">Línea de Tiempo</h3>
+                    <div class="h-64"><canvas id="chartAlumnoTimeline"></canvas></div>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col mb-6">
+                <h3 class="font-semibold text-slate-700 mb-4">Historial de Informes</h3>
+                <div id="historialAlumno" class="space-y-3 overflow-y-auto max-h-80 flex-1"></div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="font-semibold text-slate-700">Observaciones y Acciones</h3>
+                    <button id="btnToggleFormObs" onclick="toggleFormObservacion()" class="text-sm text-blue-600 hover:text-blue-800 font-medium hidden"><i class="mdi mdi-plus mr-1"></i>Agregar</button>
+                </div>
+                <div id="formObservacionAlumno" class="hidden mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-xs font-medium text-slate-600">Tipo</label>
+                                <button type="button" onclick="abrirModalTiposObservacion()" class="text-xs text-blue-600 hover:text-blue-800 font-medium"><i class="mdi mdi-cog-outline mr-1"></i>Gestionar</button>
+                            </div>
+                            <select id="obsTipo" onchange="onChangeObsTipo(this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                                <option value="observacion">Observación</option>
+                                <option value="accion">Acción</option>
+                                <option value="seguimiento">Seguimiento</option>
+                                <option value="llamado_padres">Llamado a padres</option>
+                                <option value="entrevista">Entrevista</option>
+                                <option value="notificacion">Notificación</option>
+                                <option value="derivacion">Derivación</option>
+                                <option value="suspension">Suspensión</option>
+                                <option value="otro">+ Otro tipo...</option>
+                            </select>
+                            <input type="text" id="obsTipoOtro" class="hidden w-full mt-2 px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white" placeholder="Escriba el tipo personalizado" maxlength="100">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Fecha del evento</label>
+                            <input type="date" id="obsFechaEvento" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-1">Descripción</label>
+                        <textarea id="obsDescripcion" rows="3" maxlength="1000" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none" placeholder="Describa la observación o acción..."></textarea>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="guardarObservacionAlumno()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">Guardar</button>
+                        <button onclick="toggleFormObservacion()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors">Cancelar</button>
+                    </div>
+                </div>
+                <div id="listaObservacionesAlumno" class="space-y-3 overflow-y-auto max-h-80 flex-1">
+                    <p class="text-sm text-slate-400 italic">Cargando observaciones...</p>
+                </div>
+            </div>
+            </div>
+        </section>
+
+        <!-- VISTA DOCENTE -->
+        <section id="vistaDocente" class="section hidden p-6 max-w-4xl mx-auto animate-fade-in">
+            <!-- Skeleton Vista Docente -->
+            <div id="skeleton-vistaDocente" class="skeleton-container">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="skeleton-text h-6 w-6"></div>
+                    <div class="skeleton-text h-8 w-56"></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                    <div class="flex items-center gap-4">
+                        <div class="skeleton-circle w-16 h-16"></div>
+                        <div class="flex-1 space-y-2">
+                            <div class="skeleton-text h-5 w-48"></div>
+                            <div class="skeleton-text h-4 w-32"></div>
+                            <div class="skeleton-text h-4 w-24"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <div class="skeleton-text h-5 w-40 mb-4"></div>
+                        <div class="skeleton h-64 w-full rounded-lg"></div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <div class="skeleton-text h-5 w-32 mb-4"></div>
+                        <div class="skeleton h-64 w-full rounded-lg"></div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col">
+                    <div class="skeleton-text h-5 w-40 mb-4"></div>
+                    <div class="space-y-3">
+                        <div class="skeleton-text h-20 w-full rounded-lg"></div>
+                        <div class="skeleton-text h-20 w-full rounded-lg"></div>
+                        <div class="skeleton-text h-20 w-full rounded-lg"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="content-vistaDocente" class="section-content hidden">
+                <div class="flex items-center gap-3 mb-6">
+                    <button id="btn-volver-docente" class="text-slate-400 hover:text-slate-600"><i class="mdi mdi-arrow-left text-xl"></i></button>
+                    <h1 class="text-2xl font-bold text-slate-800">Resumen del Docente</h1>
+                </div>
+                <div id="tarjetaDocente" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6"></div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <h3 class="font-semibold text-slate-700 mb-4">Distribución por Estado</h3>
+                        <div class="h-64"><canvas id="chartDocenteEstado"></canvas></div>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                        <h3 class="font-semibold text-slate-700 mb-4">Línea de Tiempo</h3>
+                        <div class="h-64"><canvas id="chartDocenteTimeline"></canvas></div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col">
+                    <h3 class="font-semibold text-slate-700 mb-4">Historial de Informes</h3>
+                    <div id="historialDocente" class="space-y-3 overflow-y-auto max-h-80 flex-1"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal Detalle -->
+    <div id="modalDetalle" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-fade-in">
+            <div class="p-6 border-b border-slate-200 flex justify-between items-center shrink-0">
+                <h3 class="text-lg font-bold text-slate-800">Detalle del Informe</h3>
+                <button id="btn-cerrar-modal" class="text-slate-400 hover:text-slate-600"><i class="mdi mdi-close text-xl"></i></button>
+            </div>
+            <div id="contenidoModal" class="p-6 space-y-4 overflow-y-auto"></div>
+            <div id="accionesModal" class="p-6 border-t border-slate-200 bg-slate-50 flex flex-wrap gap-3 shrink-0"></div>
+        </div>
+    </div>
+
+    <!-- Modal Grupo Informes (timeline) -->
+    <div id="modalGrupoInformes" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col animate-fade-in">
+            <div class="p-6 border-b border-slate-200 flex justify-between items-center shrink-0">
+                <h3 id="tituloModalGrupo" class="text-lg font-bold text-slate-800">Informes</h3>
+                <button id="btn-cerrar-modal-grupo" class="text-slate-400 hover:text-slate-600"><i class="mdi mdi-close text-xl"></i></button>
+            </div>
+            <div id="contenidoModalGrupo" class="p-6 space-y-3 overflow-y-auto"></div>
+        </div>
+    </div>
+
+    <!-- Modal Anulación -->
+    <div id="modalAnulacion" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full animate-fade-in">
+            <div class="p-6 border-b border-slate-200">
+                <h3 class="text-lg font-bold text-slate-800">Anular Informe</h3>
+            </div>
+            <div class="p-6">
+                <label class="block text-sm font-medium text-slate-700 mb-2">Motivo de la anulación *</label>
+                <textarea id="motivoAnulacion" rows="3" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none" placeholder="Indique el motivo..."></textarea>
+            </div>
+            <div class="p-6 border-t border-slate-200 bg-slate-50 flex gap-3">
+                <button id="btn-confirmar-anulacion" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition-colors">Anular</button>
+                <button id="btn-cerrar-anulacion" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Derivación -->
+    <div id="modalDerivacion" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full animate-fade-in">
+            <div class="p-6 border-b border-slate-200">
+                <h3 class="text-lg font-bold text-slate-800">Derivar Informe</h3>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Destinatario *</label>
+                    <select id="selectDerivacionDestinatario" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="">Seleccione un usuario...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Observaciones (opcional)</label>
+                    <textarea id="motivoDerivacion" rows="2" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none" placeholder="Indique el motivo de la derivación..."></textarea>
+                </div>
+            </div>
+            <div class="p-6 border-t border-slate-200 bg-slate-50 flex gap-3">
+                <button id="btn-confirmar-derivacion" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg transition-colors">Derivar</button>
+                <button id="btn-cerrar-derivacion" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <!-- Modal Gestionar Plantillas -->
+    <div id="modalPlantillas" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-fade-in">
+            <div class="p-6 border-b border-slate-200 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-800">Gestionar Plantillas</h3>
+                <button onclick="cerrarModalPlantillas()" class="text-slate-400 hover:text-slate-600"><i class="mdi mdi-close text-xl"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-3">
+                    <h4 class="text-sm font-semibold text-slate-700">Nueva plantilla</h4>
+                    <input type="text" id="newPlantillaTitulo" placeholder="Título" maxlength="200" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    <select id="newPlantillaInstancia" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
+                        <option value="">Instancia...</option>
+                        <option value="leve">Leve</option>
+                        <option value="grave">Grave</option>
+                        <option value="muy_grave">Muy Grave</option>
+                        <option value="consejo_aula">Consejo de Aula</option>
+                        <option value="consejo">Consejo Escolar de Convivencia</option>
+                    </select>
+                    <textarea id="newPlantillaResumen" rows="3" maxlength="2000" placeholder="Resumen / descripción..." class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none text-sm"></textarea>
+                    <button onclick="crearPlantilla()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors"><i class="mdi mdi-plus mr-1"></i> Agregar plantilla</button>
+                </div>
+                <div>
+                    <h4 class="text-sm font-semibold text-slate-700 mb-2">Mis plantillas</h4>
+                    <div id="listaPlantillas" class="space-y-2 max-h-64 overflow-y-auto"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Gestionar Categorías -->
+    <div id="modalCategorias" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-fade-in">
+            <div class="p-6 border-b border-slate-200 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-800">Gestionar Categorías</h3>
+                <button onclick="cerrarModalCategorias()" class="text-slate-400 hover:text-slate-600"><i class="mdi mdi-close text-xl"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-3">
+                    <h4 class="text-sm font-semibold text-slate-700">Nueva categoría</h4>
+                    <input type="text" id="newCategoriaNombre" placeholder="Nombre de la categoría" maxlength="100" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    <div class="flex items-center gap-3">
+                        <label class="text-sm text-slate-600">Color:</label>
+                        <input type="color" id="newCategoriaColor" value="#3b82f6" class="w-12 h-8 px-1 py-1 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm cursor-pointer">
+                    </div>
+                    <button onclick="crearCategoria()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors"><i class="mdi mdi-plus mr-1"></i> Agregar categoría</button>
+                </div>
+                <div>
+                    <h4 class="text-sm font-semibold text-slate-700 mb-2">Categorías existentes</h4>
+                    <div id="listaCategorias" class="space-y-2 max-h-64 overflow-y-auto"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Tipos de Observación -->
+    <div id="modalTiposObservacion" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-fade-in">
+            <div class="p-6 border-b border-slate-200 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-800">Gestionar Tipos de Observación</h3>
+                <button onclick="cerrarModalTiposObservacion()" class="text-slate-400 hover:text-slate-600"><i class="mdi mdi-close text-xl"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-3">
+                    <h4 class="text-sm font-semibold text-slate-700">Nuevo tipo</h4>
+                    <input type="text" id="newTipoObsNombre" placeholder="Nombre del tipo" maxlength="100" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    <div class="flex items-center gap-3">
+                        <label class="text-sm text-slate-600">Color:</label>
+                        <input type="color" id="newTipoObsColor" value="#64748b" class="w-12 h-8 px-1 py-1 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm cursor-pointer">
+                    </div>
+                    <button onclick="crearTipoObservacion()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors"><i class="mdi mdi-plus mr-1"></i> Agregar tipo</button>
+                </div>
+                <div>
+                    <h4 class="text-sm font-semibold text-slate-700 mb-2">Tipos existentes</h4>
+                    <div id="listaTiposObservacion" class="space-y-2 max-h-64 overflow-y-auto"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Fecha Reunión (al aprobar informe) -->
+    <div id="modalFechaReunion" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full animate-fade-in">
+            <div class="p-6 border-b border-slate-200">
+                <h3 class="text-lg font-bold text-slate-800">Agendar Reunión</h3>
+                <p class="text-sm text-slate-500 mt-1">Opcional: seleccioná una fecha para la reunión con padres/tutores</p>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="reunionInformeId">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Fecha de reunión</label>
+                    <input type="date" id="fechaReunionInput" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Nota</label>
+                    <textarea id="reunionObservacion" rows="2" maxlength="500" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none" placeholder="Observaciones sobre la reunión..."></textarea>
+                </div>
+            </div>
+            <div class="p-6 border-t border-slate-200 bg-slate-50 flex gap-3">
+                <button onclick="confirmarFechaReunion()" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg transition-colors">Guardar y aprobar</button>
+                <button onclick="confirmarFechaReunion(true)" class="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors text-sm">Omitir fecha</button>
+                <button onclick="cerrarModalFechaReunion()" class="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors text-sm">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Gestionar Reunión (editar/posponer/eliminar) -->
+    <div id="modalGestionReunion" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full animate-fade-in">
+            <div class="p-6 border-b border-slate-200 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-800">Gestionar Reunión</h3>
+                <button onclick="cerrarModalGestionReunion()" class="text-slate-400 hover:text-slate-600"><i class="mdi mdi-close text-xl"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="gestionReunionInformeId">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Nueva fecha</label>
+                    <input type="date" id="gestionReunionFecha" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+            </div>
+            <div class="p-6 border-t border-slate-200 bg-slate-50 flex flex-wrap gap-3">
+                <button onclick="guardarCambioReunion()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors">Guardar cambio</button>
+                <button onclick="posponerReunion(7)" class="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg transition-colors text-sm"><i class="mdi mdi-calendar-plus mr-1"></i>+7 días</button>
+                <button onclick="eliminarReunion()" class="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg transition-colors text-sm"><i class="mdi mdi-delete-outline mr-1"></i>Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Usuario -->
+    <div id="modalUsuario" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-fade-in">
+            <div class="p-6 border-b border-slate-200 flex justify-between items-center">
+                <h3 id="tituloModalUsuario" class="text-lg font-bold text-slate-800">Nuevo usuario</h3>
+                <button onclick="cerrarModalUsuario()" class="text-slate-400 hover:text-slate-600"><i class="mdi mdi-close text-xl"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="usuarioId">
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Email <span class="text-red-500">*</span></label>
+                    <input type="email" id="usuarioEmail" placeholder="usuario@escuela.edu.ar" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Nombre <span class="text-red-500">*</span></label>
+                        <input type="text" id="usuarioNombre" placeholder="Nombre" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Apellido <span class="text-red-500">*</span></label>
+                        <input type="text" id="usuarioApellido" placeholder="Apellido" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Rol <span class="text-red-500">*</span></label>
+                    <select id="usuarioRol" onchange="onChangeRolUsuario()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
+                        <option value="docente">Docente</option>
+                        <option value="preceptor">Preceptor</option>
+                        <option value="doe">DOE</option>
+                        <option value="pat">PAT</option>
+                        <option value="regente">Regente</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Contraseña <span id="usuarioPasswordRequerido" class="text-red-500">*</span></label>
+                    <input type="password" id="usuarioPassword" placeholder="Contraseña" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    <p id="usuarioPasswordHint" class="text-xs text-slate-500 mt-1">Dejá en blanco para mantener la contraseña actual al editar.</p>
+                </div>
+                <div class="flex items-center justify-between bg-slate-50 rounded-lg border border-slate-200 p-3">
+                    <span class="text-sm font-medium text-slate-700">Usuario activo</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="usuarioActivo" class="sr-only peer" checked>
+                        <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Cursos asignados</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="usuarioNuevoCurso" placeholder="Ej: 1° A" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        <button onclick="agregarCursoUsuario()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm"><i class="mdi mdi-plus"></i></button>
+                    </div>
+                    <div id="usuarioCursosChips" class="flex flex-wrap gap-2 mt-2"></div>
+                </div>
+                <div id="grupoAlumnosPAT" class="hidden">
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Alumnos PAT</label>
+                    <div class="flex gap-2">
+                        <select id="usuarioNuevoAlumnoPAT" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
+                            <option value="">Seleccionar alumno...</option>
+                        </select>
+                        <button onclick="agregarAlumnoPATUsuario()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm"><i class="mdi mdi-plus"></i></button>
+                    </div>
+                    <div id="usuarioAlumnosPATChips" class="flex flex-wrap gap-2 mt-2"></div>
+                </div>
+            </div>
+            <div class="p-6 border-t border-slate-200 bg-slate-50 flex flex-wrap justify-end gap-3">
+                <button onclick="cerrarModalUsuario()" class="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors text-sm">Cancelar</button>
+                <button onclick="guardarUsuario()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Cambiar Contraseña -->
+    <div id="modalCambiarPassword" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full animate-fade-in">
+            <div class="p-6">
+                <h3 class="text-lg font-bold text-slate-800 mb-2">Cambiar contraseña</h3>
+                <p class="text-xs text-slate-500 mb-4">Ingresá una contraseña segura para el usuario.</p>
+                <input type="hidden" id="cambiarPasswordUserId">
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Nueva contraseña</label>
+                        <input type="password" id="cambiarPasswordInput" placeholder="Nueva contraseña" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Repetir contraseña</label>
+                        <input type="password" id="cambiarPasswordConfirmar" placeholder="Repetí la contraseña" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    </div>
+                    <p id="cambiarPasswordHint" class="text-xs text-slate-500">Ingresá la nueva contraseña para el usuario.</p>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button onclick="cerrarModalCambiarPassword()" class="flex-1 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors text-sm">Cancelar</button>
+                    <button onclick="confirmarCambiarPassword()" class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Confirmar Eliminación de Usuario -->
+    <div id="modalConfirmarEliminarUsuario" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full animate-fade-in">
+            <div class="p-6 text-center">
+                <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="mdi mdi-alert-outline text-red-600 text-xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-800 mb-2">¿Eliminar usuario?</h3>
+                <p class="text-sm text-slate-500 mb-2">Esta acción no se puede deshacer.</p>
+                <p id="textoConfirmarEliminarUsuario" class="text-sm font-medium text-slate-700 mb-6"></p>
+                <input type="hidden" id="eliminarUsuarioId">
+                <div class="flex gap-3">
+                    <button onclick="cerrarModalConfirmarEliminarUsuario()" class="flex-1 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">Cancelar</button>
+                    <button onclick="confirmarEliminarUsuario()" class="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">
+                        Eliminar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Confirmar Cambio de Estado de Usuario -->
+    <div id="modalConfirmarEstadoUsuario" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full animate-fade-in">
+            <div class="p-6 text-center">
+                <div id="iconoConfirmarEstadoUsuario" class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i id="iconoConfirmarEstadoUsuarioInner" class="mdi text-xl"></i>
+                </div>
+                <h3 id="tituloConfirmarEstadoUsuario" class="text-lg font-bold text-slate-800 mb-2"></h3>
+                <p id="textoConfirmarEstadoUsuario" class="text-sm text-slate-500 mb-6"></p>
+                <input type="hidden" id="estadoUsuarioId">
+                <input type="hidden" id="estadoUsuarioActivo">
+                <div class="flex gap-3">
+                    <button onclick="cerrarModalConfirmarEstadoUsuario()" class="flex-1 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">Cancelar</button>
+                    <button id="btnConfirmarEstadoUsuario" onclick="confirmarCambioEstadoUsuario()" class="flex-1 px-4 py-2 text-white rounded-lg transition-colors">
+                        Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Confirmar Logout -->
+    <div id="modalLogout" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full animate-fade-in">
+            <div class="p-6 text-center">
+                <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="mdi mdi-logout-variant text-red-600 text-xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-800 mb-2">¿Cerrar sesión?</h3>
+                <p class="text-sm text-slate-500 mb-6">Vas a salir de tu cuenta. Los cambios no guardados se perderán.</p>
+                <div class="flex gap-3">
+                    <button onclick="cerrarModalLogout()" class="flex-1 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">Cancelar</button>
+                    <button id="btn-confirmar-logout" onclick="confirmarLogout()" disabled class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg transition-colors opacity-50 cursor-not-allowed">
+                        Cerrar (<span id="logoutCountdown">5</span>)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-slate-800 text-white px-6 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-50 flex items-center gap-3">
+        <i id="toastIcon" class="mdi mdi-check-circle-outline text-green-400"></i>
+        <span id="toastMsg">Operación exitosa</span>
+    </div>
+
+</body>
+</html>
