@@ -28,7 +28,7 @@ CREATE INDEX IF NOT EXISTS idx_usuarios_rol ON usuarios(rol);
 -- 2. PADRÓN LOCAL DE ALUMNOS (Sincronizado desde Nexus vía API)
 CREATE TABLE IF NOT EXISTS alumnos (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    nexus_id INTEGER UNIQUE,
+    nexus_id TEXT UNIQUE,
     dni INTEGER UNIQUE NOT NULL,
     nombre TEXT NOT NULL,
     apellido TEXT NOT NULL,
