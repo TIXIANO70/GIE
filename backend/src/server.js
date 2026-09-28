@@ -44,6 +44,8 @@ app.get('/api/informes/:id', authMiddleware, informesCtrl.obtenerInforme);
 app.post('/api/informes', authMiddleware, informesCtrl.crearInforme);
 app.put('/api/informes/:id', authMiddleware, informesCtrl.actualizarInforme);
 app.put('/api/informes/:id/estado', authMiddleware, informesCtrl.cambiarEstado);
+app.get('/api/informes/:id/historial', authMiddleware, informesCtrl.listarHistorial);
+app.post('/api/informes/:id/historial', authMiddleware, informesCtrl.agregarHistorial);
 
 // Rutas de Alumnos
 app.get('/api/alumnos', authMiddleware, alumnosCtrl.listarAlumnos);

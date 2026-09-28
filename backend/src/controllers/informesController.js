@@ -189,22 +189,31 @@ export async function actualizarInforme(req, res, next) {
         const { id } = req.params;
         const { rol, id: userId } = req.user;
 
-        // Comprobar existencia y permisos
         const check = await query('SELECT creado_por, estado FROM informes WHERE id = $1', [id]);
         if (check.rows.length === 0) {
             return res.status(404).json({ error: 'Informe no encontrado' });
         }
 
         const actual = check.rows[0];
-        const puedeEditar = esRegente(rol) || (actual.creado_por === userId && ['pendiente', 'anulado'].includes(actual.estado));
-
-        if (!puedeEditar) {
-            return res.status(403).json({ error: 'No tenés permisos para modificar este informe' });
-        }
-
         const {
-            categoria_id, tipo_falta, instancia, titulo, resumen, descargo, observaciones, fecha_reunion
+            categoria_id, tipo_falta, instancia, titulo, resumen, descargo, observaciones,
+            fecha_reunion, estado, revisado_por, fecha_revision, motivo_rechazo, motivo_anulacion, derivado_a
         } = req.body;
+
+        if (estado && estado !== actual.estado) {
+            if (estado === 'pendiente') {
+                if (!esRegente(rol) && rol !== 'doe') {
+                    return res.status(403).json({ error: 'Solo DOE o directivos pueden devolver un informe a pendiente' });
+                }
+            } else if (!esRegente(rol)) {
+                return res.status(403).json({ error: 'Solo directivos pueden modificar el estado del informe' });
+            }
+        } else {
+            const puedeEditar = esRegente(rol) || (actual.creado_por === userId && ['pendiente', 'anulado'].includes(actual.estado));
+            if (!puedeEditar) {
+                return res.status(403).json({ error: 'No tenés permisos para modificar este informe' });
+            }
+        }
 
         const updateSql = `
             UPDATE informes SET
@@ -213,18 +222,36 @@ export async function actualizarInforme(req, res, next) {
                 instancia = COALESCE($3, instancia),
                 titulo = COALESCE($4, titulo),
                 resumen = COALESCE($5, resumen),
-                descargo = $6,
-                observaciones = $7,
-                fecha_reunion = $8,
+                descargo = COALESCE($6, descargo),
+                observaciones = COALESCE($7, observaciones),
+                fecha_reunion = CASE WHEN $8 = 'NULL' THEN NULL WHEN $8 IS NOT NULL THEN $8::date ELSE fecha_reunion END,
+                estado = COALESCE($9, estado),
+                revisado_por = COALESCE($10, revisado_por),
+                fecha_revision = COALESCE($11, fecha_revision),
+                motivo_rechazo = COALESCE($12, motivo_rechazo),
+                motivo_anulacion = COALESCE($13, motivo_anulacion),
+                derivado_a = COALESCE($14, derivado_a),
                 updated_at = NOW()
-            WHERE id = $9
-            RETURNING id, codigo, estado, updated_at
+            WHERE id = $15
+            RETURNING id, codigo, estado, revisado_por, fecha_revision, updated_at
         `;
 
+        const fechaReunionParam = fecha_reunion === null ? 'NULL' : (fecha_reunion || null);
+
         const { rows } = await query(updateSql, [
-            categoria_id || null, tipo_falta, instancia, titulo, resumen,
-            descargo || null, observaciones || null, fecha_reunion || null, id
+            categoria_id || null, tipo_falta || null, instancia || null, titulo || null, resumen || null,
+            descargo || null, observaciones || null, fechaReunionParam,
+            estado || null, revisado_por || null, fecha_revision || null,
+            motivo_rechazo || null, motivo_anulacion || null, derivado_a || null,
+            id
         ]);
+
+        if (estado && estado !== actual.estado) {
+            await query(
+                'INSERT INTO historial_informes (informe_id, usuario_id, usuario_nombre, accion, detalle, estado_anterior, estado_nuevo, motivo, fecha) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())',
+                [id, userId, `${req.user.apellido}, ${req.user.nombre}`, 'revision', `Informe ${estado} por ${req.user.apellido}, ${req.user.nombre}`, actual.estado, estado, motivo_rechazo || motivo_anulacion || `Transición a ${estado}`]
+            );
+        }
 
         res.json({ ok: true, data: rows[0] });
     } catch (err) {
@@ -291,3 +318,40 @@ export async function cambiarEstado(req, res, next) {
         next(err);
     }
 }
+
+export async function agregarHistorial(req, res, next) {
+    try {
+        const { id } = req.params;
+        const { accion, detalle, motivo } = req.body;
+        const usuario_id = req.user.id;
+        const usuario_nombre = `${req.user.apellido}, ${req.user.nombre}`;
+
+        const insertSql = `
+            INSERT INTO historial_informes (informe_id, usuario_id, usuario_nombre, accion, detalle, motivo, fecha)
+            VALUES ($1, $2, $3, $4, $5, $6, NOW())
+            RETURNING *
+        `;
+        const { rows } = await query(insertSql, [id, usuario_id, usuario_nombre, accion || 'observaciones', detalle || motivo, motivo]);
+        res.status(201).json({ ok: true, data: rows[0] });
+    } catch (err) {
+        next(err);
+    }
+}
+
+export async function listarHistorial(req, res, next) {
+    try {
+        const { id } = req.params;
+        const histSql = `
+            SELECT h.*, json_build_object('id', u.id, 'nombre', u.nombre, 'apellido', u.apellido, 'rol', u.rol) AS usuario
+            FROM historial_informes h
+            LEFT JOIN usuarios u ON u.id = h.usuario_id
+            WHERE h.informe_id = $1
+            ORDER BY COALESCE(h.fecha, h.created_at) ASC
+        `;
+        const { rows } = await query(histSql, [id]);
+        res.json({ ok: true, data: rows });
+    } catch (err) {
+        next(err);
+    }
+}
+

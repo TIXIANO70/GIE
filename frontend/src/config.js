@@ -183,7 +183,20 @@ class SupabaseQueryBuilder {
             }
 
             if (this.tabla === 'historial_informes') {
-                // El backend ya registra automáticamente en historial en cada acción
+                if (this.operacion === 'INSERT') {
+                    const informeId = this.body?.informe_id;
+                    if (informeId) {
+                        const res = await api.post(`/informes/${informeId}/historial`, this.body);
+                        return { data: res.data ? [res.data] : [], error: null };
+                    }
+                }
+                if (this.operacion === 'SELECT') {
+                    const informeId = this.filtros?.informe_id;
+                    if (informeId) {
+                        const res = await api.get(`/informes/${informeId}/historial`);
+                        return { data: res.data || [], error: null };
+                    }
+                }
                 return { data: [], error: null };
             }
 

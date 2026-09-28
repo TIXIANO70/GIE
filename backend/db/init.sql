@@ -81,6 +81,7 @@ CREATE TABLE IF NOT EXISTS informes (
     motivo_rechazo TEXT,
     motivo_anulacion TEXT,
     fecha_reunion DATE,
+    fecha_revision TIMESTAMPTZ,
     observaciones TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -96,9 +97,13 @@ CREATE TABLE IF NOT EXISTS historial_informes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     informe_id UUID NOT NULL REFERENCES informes(id) ON DELETE CASCADE,
     usuario_id UUID NOT NULL REFERENCES usuarios(id) ON DELETE RESTRICT,
+    usuario_nombre TEXT,
+    accion TEXT,
+    detalle TEXT,
     estado_anterior TEXT,
-    estado_nuevo TEXT NOT NULL,
+    estado_nuevo TEXT,
     motivo TEXT,
+    fecha TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
