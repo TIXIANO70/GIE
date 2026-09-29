@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   gie-postgres:
     image: postgres:16-alpine
@@ -35,7 +33,7 @@ services:
       DB_USER: gie_user
       DB_PASSWORD: gie_local_secure_password
       JWT_SECRET: ${JWT_SECRET:-clave_secreta_jwt_para_gie_onprem_segura}
-      NEXUS_GATEWAY_URL: ${NEXUS_GATEWAY_URL:-http://192.168.1.200:3000/api/v1/gateway}
+      NEXUS_GATEWAY_URL: ${NEXUS_GATEWAY_URL:-http://nexus-backend:3000/api/v1/gateway}
       NEXUS_API_KEY: ${NEXUS_API_KEY:-nx_gie_f8a92b3c4d5e6f7a}
     depends_on:
       gie-postgres:
