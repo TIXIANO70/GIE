@@ -225,9 +225,6 @@ export const supabaseClient = {
                 const res = await api.put(`/informes/${id}/estado`, { nuevo_estado: 'pendiente' });
                 return { data: res.data, error: null };
             }
-            if (funcion === 'obtener_espacio_bd') {
-                return { data: { total_mb: 500, used_mb: 25 }, error: null };
-            }
             if (funcion === 'eliminar_usuario_completo') {
                 await api.put(`/usuarios/${params.user_id}`, { activo: false });
                 return { error: null };

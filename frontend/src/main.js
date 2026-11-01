@@ -595,6 +595,18 @@ function setupEventListeners() {
         });
     }
 
+    const toggleDuplicados = document.getElementById('toggleEvitarDuplicados');
+    if (toggleDuplicados) {
+        toggleDuplicados.checked = localStorage.getItem('gie_evitar_duplicados_informes') === 'true';
+        toggleDuplicados.addEventListener('change', () => {
+            localStorage.setItem('gie_evitar_duplicados_informes', toggleDuplicados.checked ? 'true' : 'false');
+            const secInformes = document.getElementById('informes');
+            if (secInformes && !secInformes.classList.contains('hidden')) {
+                filtrarInformes();
+            }
+        });
+    }
+
     // Manejo de tecla Escape para modales y drawer
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
@@ -698,7 +710,11 @@ function showSection(sectionId) {
         _cursosAjustes = [...(getPerfil()?.cursos || [])];
         renderizarChipsCursos('ajustesCursosLista', _cursosAjustes, 'quitarMiCurso');
         renderizarChipsAlumnosPAT('ajustesAlumnosPATLista', getPerfil()?.alumnos_pat || [], 'quitarAlumnoPAT');
-        cargarEspacioBD().then(() => ocultarSkeleton('ajustes'));
+        const toggleDuplicados = document.getElementById('toggleEvitarDuplicados');
+        if (toggleDuplicados) {
+            toggleDuplicados.checked = localStorage.getItem('gie_evitar_duplicados_informes') === 'true';
+        }
+        ocultarSkeleton('ajustes');
     }
     if (sectionId === 'informes') {
         mostrarSkeleton('informes');
@@ -714,7 +730,7 @@ function showSection(sectionId) {
                 if (savedTab && savedTab !== tabInformesActivo) {
                     tabInformesActivo = savedTab;
                 }
-                const savedVista = sessionStorage.getItem('gie_vista_informes') || 'kanban';
+                const savedVista = localStorage.getItem('gie_vista_informes') || 'lista';
                 setVistaInformes(savedVista);
                 actualizarTabsInformes();
                 filtrarInformes();
@@ -1279,11 +1295,11 @@ function actualizarTabsAlumnos() {
     });
 }
 
-let vistaInformesActiva = 'kanban';
+let vistaInformesActiva = 'lista';
 
 window.setVistaInformes = function(vista) {
     vistaInformesActiva = vista;
-    sessionStorage.setItem('gie_vista_informes', vista);
+    localStorage.setItem('gie_vista_informes', vista);
     const btnKanban = document.getElementById('btnVistaKanban');
     const btnLista = document.getElementById('btnVistaLista');
     const kanbanEl = document.getElementById('kanbanInformes');
@@ -1803,13 +1819,29 @@ function renderizarInformes(lista) {
         <div class="space-y-3 mb-6">${recientes.map(renderCardInforme).join('')}</div>`;
     }
 
-    // Sección del estado/tab elegido (todos los informes filtrados)
+    // Filtrar lista inferior si la preferencia de evitar duplicados está activa
+    const evitarDuplicados = localStorage.getItem('gie_evitar_duplicados_informes') === 'true';
+    const recientesIds = new Set(recientes.map(r => r.id));
+    const listaInferior = evitarDuplicados
+        ? ordenados.filter(i => !recientesIds.has(i.id))
+        : ordenados;
+
+    // Sección del estado/tab elegido
     html += `
     <div class="flex items-center gap-2 mb-3">
         <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wide">${tabInfo.titulo}</h3>
-        <span class="text-xs ${tabInfo.clase} px-2 py-0.5 rounded-full font-semibold">${ordenados.length}</span>
-    </div>
-    <div class="space-y-3">${ordenados.map(renderCardInforme).join('')}</div>`;
+        <span class="text-xs ${tabInfo.clase} px-2 py-0.5 rounded-full font-semibold">${listaInferior.length}</span>
+    </div>`;
+
+    if (listaInferior.length > 0) {
+        html += `<div class="space-y-3">${listaInferior.map(renderCardInforme).join('')}</div>`;
+    } else {
+        html += `
+        <div class="p-6 text-center text-slate-400 text-xs italic bg-slate-50 rounded-xl border border-dashed border-slate-200">
+            <i class="mdi mdi-check-all text-xl mb-1 block text-slate-400"></i>
+            Todos los informes de esta sección se muestran arriba en Recientes
+        </div>`;
+    }
 
     contenedor.innerHTML = html;
     contenedor.querySelectorAll('.card-scroll').forEach(card => cardObserver.observe(card));
@@ -5187,66 +5219,6 @@ window.cerrarDrillDownAnio = function() {
     if (container) container.classList.add('hidden');
 };
 window.cambiarPeriodoTendencia = cambiarPeriodoTendencia;
-
-// ==================== ESPACIO BASE DE DATOS ====================
-const DB_LIMITE_MB_DEFAULT = 500; // Límite por defecto (plan Free Supabase)
-
-async function cargarEspacioBD() {
-    if (!USE_SUPABASE) return;
-    const esRegente = getPerfil()?.rol === 'regente';
-    const card = document.getElementById('cardDbSpace');
-    if (!esRegente) {
-        if (card) card.classList.add('hidden');
-        return;
-    }
-    if (card) card.classList.remove('hidden');
-
-    const { data, error } = await supabaseClient.rpc('obtener_espacio_bd');
-    if (error || !data || !data.length) {
-        document.getElementById('dbSpaceUsedLabel').textContent = 'Error';
-        return;
-    }
-    const row = data[0];
-    renderizarEspacioBD(row.usado_bytes, row.usado_texto);
-}
-
-function renderizarEspacioBD(usadoBytes, usadoTexto) {
-    const usedLabel = document.getElementById('dbSpaceUsedLabel');
-    const totalLabel = document.getElementById('dbSpaceTotalLabel');
-    const percentLabel = document.getElementById('dbSpacePercentLabel');
-    const bar = document.getElementById('dbSpaceBar');
-    const alertEl = document.getElementById('dbSpaceAlert');
-
-    const limiteMB = parseInt(localStorage.getItem('gie_db_limite_mb') || DB_LIMITE_MB_DEFAULT, 10);
-    const limiteBytes = limiteMB * 1024 * 1024;
-    let porcentaje = usadoBytes ? Math.round((usadoBytes / limiteBytes) * 100) : 0;
-    if (porcentaje > 100) porcentaje = 100;
-
-    usedLabel.textContent = usadoTexto || '—';
-    totalLabel.textContent = formatearBytes(limiteBytes);
-    percentLabel.textContent = porcentaje + '%';
-    bar.style.width = porcentaje + '%';
-
-    bar.classList.remove('bg-blue-500', 'bg-amber-500', 'bg-red-500');
-    alertEl.classList.add('hidden');
-    if (porcentaje >= 90) {
-        bar.classList.add('bg-red-500');
-        alertEl.classList.remove('hidden');
-    } else if (porcentaje >= 70) {
-        bar.classList.add('bg-amber-500');
-    } else {
-        bar.classList.add('bg-blue-500');
-    }
-}
-
-function formatearBytes(bytes) {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    const val = parseFloat((bytes / Math.pow(k, i)).toFixed(1));
-    return Number.isInteger(val) ? val + ' ' + sizes[i] : val + ' ' + sizes[i];
-}
 
 // Exponer funciones usadas en onclick al scope global
 window.showSection = showSection;
