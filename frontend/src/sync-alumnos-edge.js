@@ -20,10 +20,14 @@ export async function sincronizarAlumnosDesdeEdge(forzar = false) {
     try {
         const res = await api.sincronizarAlumnos();
         _lastAlumnosSync = ahora;
+        if (res && res.offline) {
+            console.info('[GIE] Nexus Gateway offline, operando con base local:', res.message || 'offline');
+            return { ok: false, offline: true, sincronizados: 0 };
+        }
         console.log('[GIE] Nexus sincronizado exitosamente:', res);
         return { ok: true, ...res };
     } catch (err) {
-        console.error('[GIE] Error en sincronización con Nexus:', err);
-        return { ok: false, error: err.message, sincronizados: 0 };
+        console.info('[GIE] Servicio de sincronización Nexus no disponible:', err.message || err);
+        return { ok: false, offline: true, error: err.message, sincronizados: 0 };
     }
 }

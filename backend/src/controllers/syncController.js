@@ -11,7 +11,14 @@ function normalizeTurno(val) {
 export async function sincronizarAlumnos(req, res, next) {
     try {
         console.log('[SYNC] Iniciando sincronización de alumnos desde Nexus Gateway...');
-        const { cursos, alumnos } = await fetchCursosYNexusAlumnos();
+        let nexusData;
+        try {
+            nexusData = await fetchCursosYNexusAlumnos();
+        } catch (nexusErr) {
+            console.warn('[SYNC] Nexus Gateway offline o inalcanzable:', nexusErr.message || nexusErr);
+            return res.status(200).json({ ok: false, offline: true, message: 'Nexus Gateway offline' });
+        }
+        const { cursos, alumnos } = nexusData;
 
         if (!alumnos || alumnos.length === 0) {
             return res.json({ ok: true, sincronizados: 0, mensaje: 'No se encontraron alumnos en Nexus' });

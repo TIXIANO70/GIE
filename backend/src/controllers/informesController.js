@@ -29,22 +29,37 @@ export async function listarInformes(req, res, next) {
 
         const params = [];
 
-        // Filtro por rol institucional
+        // Filtro por rol institucional (incluyendo derivación a usuario específico)
         if (esRegente(rol)) {
             // Regente ve todo
         } else if (rol === 'doe') {
-            // DOE ve derivados, archivados y anulados
+            // DOE ve derivados, archivados y anulados O los informes derivados directamente a él
             params.push(['derivado', 'archivado', 'anulado']);
-            sql += ` AND i.estado = ANY($${params.length})`;
+            const estadoIdx = `$${params.length}`;
+            params.push(String(userId));
+            const userIdx = `$${params.length}`;
+            params.push(String(req.user.email || ''));
+            const emailIdx = `$${params.length}`;
+            sql += ` AND (i.estado = ANY(${estadoIdx}) OR i.derivado_a = ${userIdx} OR i.derivado_a = ${emailIdx})`;
         } else if (rol === 'pat') {
-            // PAT ve alumnos asignados
+            // PAT ve alumnos asignados O los informes derivados directamente a él
             const asignados = Array.isArray(alumnos_pat) ? alumnos_pat : [];
             params.push(asignados);
-            sql += ` AND i.alumno_id = ANY($${params.length}::uuid[])`;
+            const alumnosIdx = `$${params.length}::uuid[]`;
+            params.push(String(userId));
+            const userIdx = `$${params.length}`;
+            params.push(String(req.user.email || ''));
+            const emailIdx = `$${params.length}`;
+            sql += ` AND (i.alumno_id = ANY(${alumnosIdx}) OR i.derivado_a = ${userIdx} OR i.derivado_a = ${emailIdx})`;
         } else {
-            // Docente / Preceptor ve sus propios informes
+            // Docente / Preceptor ve sus propios informes O los informes derivados directamente a él
             params.push(userId);
-            sql += ` AND i.creado_por = $${params.length}`;
+            const creadorIdx = `$${params.length}`;
+            params.push(String(userId));
+            const userIdx = `$${params.length}`;
+            params.push(String(req.user.email || ''));
+            const emailIdx = `$${params.length}`;
+            sql += ` AND (i.creado_por = ${creadorIdx} OR i.derivado_a = ${userIdx} OR i.derivado_a = ${emailIdx})`;
         }
 
         // Filtros opcionales por query param
@@ -187,14 +202,15 @@ export async function crearInforme(req, res, next) {
 export async function actualizarInforme(req, res, next) {
     try {
         const { id } = req.params;
-        const { rol, id: userId } = req.user;
+        const { rol, id: userId, email: userEmail } = req.user;
 
-        const check = await query('SELECT creado_por, estado FROM informes WHERE id = $1', [id]);
+        const check = await query('SELECT creado_por, estado, derivado_a FROM informes WHERE id = $1', [id]);
         if (check.rows.length === 0) {
             return res.status(404).json({ error: 'Informe no encontrado' });
         }
 
         const actual = check.rows[0];
+        const esDestinatario = actual.derivado_a && (actual.derivado_a === String(userId) || actual.derivado_a === userEmail);
         const {
             categoria_id, tipo_falta, instancia, titulo, resumen, descargo, observaciones,
             fecha_reunion, estado, revisado_por, fecha_revision, motivo_rechazo, motivo_anulacion, derivado_a
@@ -202,14 +218,14 @@ export async function actualizarInforme(req, res, next) {
 
         if (estado && estado !== actual.estado) {
             if (estado === 'pendiente') {
-                if (!esRegente(rol) && rol !== 'doe') {
-                    return res.status(403).json({ error: 'Solo DOE o directivos pueden devolver un informe a pendiente' });
+                if (!esRegente(rol) && rol !== 'doe' && !esDestinatario) {
+                    return res.status(403).json({ error: 'Solo DOE, directivos o destinatario de la derivación pueden devolver un informe a pendiente' });
                 }
             } else if (!esRegente(rol)) {
                 return res.status(403).json({ error: 'Solo directivos pueden modificar el estado del informe' });
             }
         } else {
-            const puedeEditar = esRegente(rol) || (actual.creado_por === userId && ['pendiente', 'anulado'].includes(actual.estado));
+            const puedeEditar = esRegente(rol) || esDestinatario || (actual.creado_por === userId && ['pendiente', 'anulado'].includes(actual.estado));
             if (!puedeEditar) {
                 return res.status(403).json({ error: 'No tenés permisos para modificar este informe' });
             }
@@ -263,20 +279,22 @@ export async function cambiarEstado(req, res, next) {
     try {
         const { id } = req.params;
         const { nuevo_estado, motivo, derivado_a } = req.body;
-        const { rol, id: userId } = req.user;
+        const { rol, id: userId, email: userEmail } = req.user;
 
-        const check = await query('SELECT estado FROM informes WHERE id = $1', [id]);
+        const check = await query('SELECT estado, derivado_a FROM informes WHERE id = $1', [id]);
         if (check.rows.length === 0) {
             return res.status(404).json({ error: 'Informe no encontrado' });
         }
 
-        const estadoAnterior = check.rows[0].estado;
+        const actual = check.rows[0];
+        const estadoAnterior = actual.estado;
+        const esDestinatario = actual.derivado_a && (actual.derivado_a === String(userId) || actual.derivado_a === userEmail);
 
         // Validación de permisos según transición
         if (nuevo_estado === 'pendiente') {
-            // DOE o Regente pueden devolver informe derivado a pendiente
-            if (!esRegente(rol) && rol !== 'doe') {
-                return res.status(403).json({ error: 'Solo DOE o directivos pueden devolver un informe a pendiente' });
+            // DOE, directivos o destinatario de la derivación pueden devolver informe derivado a pendiente
+            if (!esRegente(rol) && rol !== 'doe' && !esDestinatario) {
+                return res.status(403).json({ error: 'Solo DOE, directivos o destinatario de la derivación pueden devolver un informe a pendiente' });
             }
         } else {
             // Solo directivos pueden aprobar, derivar, archivar o anular
@@ -325,6 +343,22 @@ export async function agregarHistorial(req, res, next) {
         const { accion, detalle, motivo } = req.body;
         const usuario_id = req.user.id;
         const usuario_nombre = `${req.user.apellido}, ${req.user.nombre}`;
+        const { rol, email: userEmail } = req.user;
+
+        const check = await query('SELECT id, creado_por, derivado_a, estado FROM informes WHERE id = $1', [id]);
+        if (check.rows.length === 0) {
+            return res.status(404).json({ error: 'Informe no encontrado' });
+        }
+
+        const actual = check.rows[0];
+        const esDestinatario = actual.derivado_a && (actual.derivado_a === String(usuario_id) || actual.derivado_a === userEmail);
+        const esCreador = actual.creado_por === usuario_id;
+        const esDirector = esRegente(rol);
+        const esDoeOPat = rol === 'doe' || rol === 'pat';
+
+        if (!esDirector && !esDoeOPat && !esCreador && !esDestinatario) {
+            return res.status(403).json({ error: 'No tenés permisos para registrar acciones en este informe' });
+        }
 
         const insertSql = `
             INSERT INTO historial_informes (informe_id, usuario_id, usuario_nombre, accion, detalle, motivo, fecha)
@@ -337,6 +371,9 @@ export async function agregarHistorial(req, res, next) {
         next(err);
     }
 }
+
+export const agregarObservacion = agregarHistorial;
+export const registrarAccionTomada = agregarHistorial;
 
 export async function listarHistorial(req, res, next) {
     try {

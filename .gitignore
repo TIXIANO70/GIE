@@ -21,3 +21,7 @@ dist/
 # Logs
 *.log
 npm-debug.log*
+
+# Database data
+backend/data/
+data/

@@ -238,6 +238,26 @@ function getNombreUsuario(id) {
     return u ? `${u.apellido}, ${u.nombre}` : 'N/A';
 }
 
+function getUsuario(id) {
+    if (!id) return null;
+    return usuarios.find(x => x.id === id) || null;
+}
+
+function getUsuarioRolLabel(id) {
+    const u = getUsuario(id);
+    if (!u) return 'Usuario';
+    const rolMap = {
+        admin: 'Administrador',
+        regente: 'Regente',
+        docente: 'Docente',
+        preceptor: 'Preceptor',
+        doe: 'DOE (Orientación Escolar)',
+        pat: 'PAT (Tutoría)',
+        jefe_de_taller: 'Jefe de Taller'
+    };
+    return rolMap[u.rol] || u.rol || 'Usuario';
+}
+
 // Parsea una fecha DATE de Supabase (string 'YYYY-MM-DD') sin problemas de zona horaria
 function parseFechaLocal(dateStr) {
     if (!dateStr) return null;
@@ -575,6 +595,37 @@ function setupEventListeners() {
         });
     }
 
+    // Manejo de tecla Escape para modales y drawer
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const modalAnulacion = document.getElementById('modalAnulacion');
+            if (modalAnulacion && !modalAnulacion.classList.contains('hidden')) {
+                cerrarModalAnulacion();
+                return;
+            }
+            const modalDerivacion = document.getElementById('modalDerivacion');
+            if (modalDerivacion && !modalDerivacion.classList.contains('hidden')) {
+                cerrarModalDerivacion();
+                return;
+            }
+            const modalFechaReunion = document.getElementById('modalFechaReunion');
+            if (modalFechaReunion && !modalFechaReunion.classList.contains('hidden')) {
+                cerrarModalFechaReunion();
+                return;
+            }
+            const modalDetalle = document.getElementById('modalDetalle');
+            if (modalDetalle && !modalDetalle.classList.contains('hidden')) {
+                cerrarModal();
+                return;
+            }
+            const drawer = document.getElementById('slideOverDrawer');
+            if (drawer && !drawer.classList.contains('translate-x-full')) {
+                cerrarDrawerInforme();
+                return;
+            }
+        }
+    });
+
     // Suscripción realtime (solo Supabase)
     if (USE_SUPABASE) {
         supabaseClient.channel('informes_changes')
@@ -663,6 +714,8 @@ function showSection(sectionId) {
                 if (savedTab && savedTab !== tabInformesActivo) {
                     tabInformesActivo = savedTab;
                 }
+                const savedVista = sessionStorage.getItem('gie_vista_informes') || 'kanban';
+                setVistaInformes(savedVista);
                 actualizarTabsInformes();
                 filtrarInformes();
                 ocultarSkeleton('informes');
@@ -845,6 +898,15 @@ function formatearFechaCorta(fecha) {
     if (!fecha) return 'N/A';
     return new Date(fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
+function formatearNumeroInforme(informe) {
+    if (!informe) return '#----';
+    const anio = new Date(informe.fecha_creacion || Date.now()).getFullYear();
+    const numeroStr = (informe.numero !== null && informe.numero !== undefined)
+        ? String(informe.numero).padStart(3, '0')
+        : (informe.id ? String(informe.id).slice(0, 4) : '---');
+    return `#${anio}-${numeroStr}`;
+}
+window.formatearNumeroInforme = formatearNumeroInforme;
 function generarId() { return crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).substr(2); }
 function mostrarToast(mensaje, tipo = 'success') {
     const toast = document.getElementById('toast');
@@ -1217,50 +1279,51 @@ function actualizarTabsAlumnos() {
     });
 }
 
+let vistaInformesActiva = 'kanban';
+
+window.setVistaInformes = function(vista) {
+    vistaInformesActiva = vista;
+    sessionStorage.setItem('gie_vista_informes', vista);
+    const btnKanban = document.getElementById('btnVistaKanban');
+    const btnLista = document.getElementById('btnVistaLista');
+    const kanbanEl = document.getElementById('kanbanInformes');
+    const listaEl = document.getElementById('vistaListaContainer');
+
+    if (vista === 'kanban') {
+        if (btnKanban) {
+            btnKanban.className = 'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-white text-blue-700 shadow-xs';
+        }
+        if (btnLista) {
+            btnLista.className = 'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all';
+        }
+        if (kanbanEl) kanbanEl.classList.remove('hidden');
+        if (listaEl) listaEl.classList.add('hidden');
+    } else {
+        if (btnLista) {
+            btnLista.className = 'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all bg-white text-blue-700 shadow-xs';
+        }
+        if (btnKanban) {
+            btnKanban.className = 'flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-900 transition-all';
+        }
+        if (kanbanEl) kanbanEl.classList.add('hidden');
+        if (listaEl) listaEl.classList.remove('hidden');
+    }
+    filtrarInformes();
+};
+
 function filtrarInformes() {
-    const busqueda = document.getElementById('filtroBusqueda').value.toLowerCase();
-    const curso = document.getElementById('filtroCurso').value;
+    const busqueda = document.getElementById('filtroBusqueda')?.value.toLowerCase() || '';
+    const curso = document.getElementById('filtroCurso')?.value || '';
     const division = document.getElementById('filtroDivisionInformes')?.value || '';
     const turno = document.getElementById('filtroTurnoInformes')?.value || '';
-    const estado = document.getElementById('filtroEstado').value;
-    const instancia = document.getElementById('filtroInstancia').value;
+    const estado = document.getElementById('filtroEstado')?.value || '';
+    const instancia = document.getElementById('filtroInstancia')?.value || '';
     const esRegente = getPerfil()?.rol === 'regente';
     const esDOE = getPerfil()?.rol === 'doe';
     const esPAT = getPerfil()?.rol === 'pat';
     const misAlumnosPAT = getPerfil()?.alumnos_pat || [];
-    const filtrados = informes.filter(i => {
-        const alumno = getAlumno(i.alumno_id);
-        const matchBusqueda = !busqueda ||
-            `${alumno?.apellido || ''} ${alumno?.nombre || ''}`.toLowerCase().includes(busqueda) ||
-            i.titulo.toLowerCase().includes(busqueda) ||
-            i.resumen.toLowerCase().includes(busqueda) ||
-            (i.numero !== null && i.numero !== undefined && i.numero.toString().includes(busqueda));
-        const matchCurso = !curso || (alumno && alumno.curso === curso);
-        const matchDivision = !division || (alumno && alumno.division === division);
-        const matchTurno = !turno || (alumno && alumno.turno === turno);
-        const matchEstado = !estado || i.estado === estado;
-        const matchInstancia = !instancia || i.instancia === instancia;
-        // Regente ve todo; DOE ve derivados a él + archivados + anulados; Doc/Precep ve suyos + derivados a él; PAT ve sus alumnos + suyos + derivados a él
-        const perfilId = getPerfil()?.id;
-        const rol = getPerfil()?.rol;
-        const esDestinatario = i.derivado_a === perfilId;
-        const matchCreador = esRegente
-            || (rol === 'doe' && (esDestinatario || i.estado === 'archivado' || i.estado === 'anulado'))
-            || (rol === 'docente' && (i.creado_por === perfilId || esDestinatario))
-            || (rol === 'preceptor' && (i.creado_por === perfilId || esDestinatario))
-            || (rol === 'pat' && (i.creado_por === perfilId || esDestinatario || misAlumnosPAT.includes(i.alumno_id)));
-        // Filtro rápido por tab
-        const matchTab = tabInformesActivo === 'todos' ? true :
-            tabInformesActivo === 'pendientes' ? i.estado === 'pendiente' :
-            tabInformesActivo === 'revisados' ? i.estado === 'revisado' :
-            tabInformesActivo === 'derivados' ? i.estado === 'derivado' :
-            tabInformesActivo === 'archivados' ? i.estado === 'archivado' :
-            tabInformesActivo === 'anulados' ? i.estado === 'anulado' :
-            false;
-        return matchBusqueda && matchCurso && matchDivision && matchTurno && matchEstado && matchInstancia && matchCreador && matchTab;
-    });
 
-    // Actualizar badges (filtrados por creador también para docentes/PAT)
+    // Base filtrados por rol y filtros superiores
     const baseFiltrados = informes.filter(i => {
         const alumno = getAlumno(i.alumno_id);
         const matchBusqueda = !busqueda ||
@@ -1283,6 +1346,8 @@ function filtrarInformes() {
             || (rol === 'pat' && (i.creado_por === perfilId || esDestinatario || misAlumnosPAT.includes(i.alumno_id)));
         return matchBusqueda && matchCurso && matchDivision && matchTurno && matchEstado && matchInstancia && matchCreador;
     });
+
+    // Actualizar badges de los tabs de lista
     const badgeTodos = document.getElementById('badgeTodos');
     const badgePendientes = document.getElementById('badgePendientes');
     const badgeRevisados = document.getElementById('badgeRevisados');
@@ -1296,16 +1361,368 @@ function filtrarInformes() {
     if (badgeArchivados) badgeArchivados.textContent = baseFiltrados.filter(i => i.estado === 'archivado').length;
     if (badgeAnulados) badgeAnulados.textContent = baseFiltrados.filter(i => i.estado === 'anulado').length;
 
-    // Ordenar según pestaña activa: en revisados/derivados/finalizados usar fecha_revision (más reciente primero)
-    filtrados.sort((a, b) => {
+    // Renderizar Kanban con los informes base filtrados
+    renderizarKanban(baseFiltrados);
+
+    // Filtrados para Lista Clásica según el tab seleccionado
+    const filtradosLista = baseFiltrados.filter(i => {
+        if (tabInformesActivo === 'todos') return true;
+        if (tabInformesActivo === 'pendientes') return i.estado === 'pendiente';
+        if (tabInformesActivo === 'revisados') return i.estado === 'revisado';
+        if (tabInformesActivo === 'derivados') return i.estado === 'derivado';
+        if (tabInformesActivo === 'archivados') return i.estado === 'archivado';
+        if (tabInformesActivo === 'anulados') return i.estado === 'anulado';
+        return true;
+    });
+
+    filtradosLista.sort((a, b) => {
         const usarFechaRevision = ['revisados', 'derivados', 'finalizados'].includes(tabInformesActivo);
         const fechaA = new Date(usarFechaRevision ? (a.fecha_revision || a.fecha_creacion) : a.fecha_creacion);
         const fechaB = new Date(usarFechaRevision ? (b.fecha_revision || b.fecha_creacion) : b.fecha_creacion);
         return fechaB - fechaA;
     });
 
-    renderizarInformes(filtrados);
+    renderizarInformes(filtradosLista);
 }
+
+function renderizarKanban(lista) {
+    const colPendientes = lista.filter(i => i.estado === 'pendiente');
+    const colDerivados = lista.filter(i => i.estado === 'derivado');
+    const colRevisados = lista.filter(i => i.estado === 'revisado');
+    const colCerrados = lista.filter(i => i.estado === 'archivado' || i.estado === 'anulado');
+
+    const cPend = document.getElementById('kanbanCountPendientes');
+    const cDer = document.getElementById('kanbanCountDerivados');
+    const cRev = document.getElementById('kanbanCountRevisados');
+    const cCer = document.getElementById('kanbanCountCerrados');
+    if (cPend) cPend.textContent = colPendientes.length;
+    if (cDer) cDer.textContent = colDerivados.length;
+    if (cRev) cRev.textContent = colRevisados.length;
+    if (cCer) cCer.textContent = colCerrados.length;
+
+    const elPend = document.getElementById('kanbanColPendientes');
+    const elDer = document.getElementById('kanbanColDerivados');
+    const elRev = document.getElementById('kanbanColRevisados');
+    const elCer = document.getElementById('kanbanColCerrados');
+
+    const renderEmpty = (label) => `<div class="p-6 text-center text-slate-400 text-xs italic"><i class="mdi mdi-inbox-outline text-2xl mb-1 block text-slate-300"></i>Sin informes ${label}</div>`;
+
+    if (elPend) elPend.innerHTML = colPendientes.length ? colPendientes.map(renderKanbanCard).join('') : renderEmpty('pendientes');
+    if (elDer) elDer.innerHTML = colDerivados.length ? colDerivados.map(renderKanbanCard).join('') : renderEmpty('derivados');
+    if (elRev) elRev.innerHTML = colRevisados.length ? colRevisados.map(renderKanbanCard).join('') : renderEmpty('revisados');
+    if (elCer) elCer.innerHTML = colCerrados.length ? colCerrados.map(renderKanbanCard).join('') : renderEmpty('cerrados');
+}
+
+function renderKanbanCard(i) {
+    const alumno = getAlumno(i.alumno_id);
+    const anio = new Date(i.fecha_creacion || Date.now()).getFullYear();
+    const numeroStr = (i.numero !== null && i.numero !== undefined) ? String(i.numero).padStart(3, '0') : i.id.slice(0, 4);
+    const codigo = `#${anio}-${numeroStr}`;
+    
+    const instanceMap = {
+        leve: { label: 'Leve', badge: 'bg-amber-50 text-amber-700 border-amber-300' },
+        grave: { label: 'Grave', badge: 'bg-orange-50 text-orange-700 border-orange-300' },
+        muy_grave: { label: 'Muy Grave', badge: 'bg-red-50 text-red-700 border-red-300' },
+        consejo_aula: { label: 'Consejo Aula', badge: 'bg-pink-50 text-pink-700 border-pink-300' },
+        consejo: { label: 'Consejo Escolar', badge: 'bg-purple-50 text-purple-700 border-purple-300' }
+    };
+    const inst = instanceMap[i.instancia] || { label: i.instancia, badge: 'bg-blue-50 text-blue-700 border-blue-300' };
+
+    let extraBadge = '';
+    if (i.estado === 'derivado') {
+        const dest = getUsuario(i.derivado_a);
+        const destNombre = dest ? `${dest.apellido}, ${dest.nombre}` : (i.derivado_a ? getNombreUsuario(i.derivado_a) : 'DOE');
+        const destRol = dest?.rol ? dest.rol.toUpperCase() : 'DOE';
+        extraBadge = `
+        <div class="flex items-center gap-1.5 text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-md font-semibold">
+            <i class="mdi mdi-share-variant-outline text-emerald-600 text-xs"></i>
+            <span class="truncate">Derivado a: <strong>${escapeHtml(destNombre)}</strong> (${escapeHtml(destRol)})</span>
+        </div>`;
+    } else if (i.estado === 'revisado') {
+        if (i.fecha_reunion) {
+            extraBadge = `
+            <div class="flex items-center gap-1.5 text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-1 rounded-md">
+                <i class="mdi mdi-calendar-clock text-purple-600 text-xs"></i>
+                <span>Citación: ${formatearFechaCorta(i.fecha_reunion)}</span>
+            </div>`;
+        }
+    } else if (i.estado === 'archivado' || i.estado === 'anulado') {
+        if (i.estado === 'anulado') {
+            extraBadge = `
+            <div class="flex items-center justify-between text-[10px] px-2 py-1 rounded-md bg-red-50 border border-red-200 text-red-700 font-bold">
+                <span class="flex items-center gap-1"><i class="mdi mdi-cancel text-xs"></i>Anulado</span>
+                <span class="text-slate-400 font-normal truncate max-w-[130px]" title="${escapeAttr(i.motivo_rechazo || '')}">${escapeHtml(i.motivo_rechazo || 'Sin motivo')}</span>
+            </div>`;
+        } else {
+            extraBadge = `
+            <div class="flex items-center gap-1 text-[10px] px-2 py-1 rounded-md bg-slate-100 border border-slate-200 text-slate-600 font-bold">
+                <i class="mdi mdi-archive-outline text-xs"></i>
+                <span>Archivado en legajo</span>
+            </div>`;
+        }
+    }
+
+    return `
+    <div onclick="abrirDrawerInforme('${i.id}')" class="bg-white p-3.5 rounded-xl border border-slate-200/90 shadow-2xs hover:shadow-md cursor-pointer transition-all instancia-${escapeAttr(i.instancia)} space-y-2.5 group">
+        <div class="flex items-center justify-between">
+            <span class="text-[11px] font-mono font-bold text-slate-400 group-hover:text-blue-600">${codigo}</span>
+            <span class="text-[10px] px-2 py-0.5 rounded-full border font-bold ${inst.badge}">${inst.label}</span>
+        </div>
+        <div>
+            <h4 class="text-xs font-bold text-slate-900 group-hover:text-blue-700">${alumno ? `${escapeHtml(alumno.apellido)}, ${escapeHtml(alumno.nombre)}` : 'Desconocido'}</h4>
+            <p class="text-[11px] text-slate-500 font-medium">${alumno ? `${escapeHtml(alumno.curso)} ${escapeHtml(alumno.division)}${alumno.turno ? ' • ' + escapeHtml(alumno.turno) : ''}` : ''}</p>
+        </div>
+        <p class="text-xs font-semibold text-slate-800 line-clamp-1">${escapeHtml(i.titulo)}</p>
+        <div class="bg-slate-50 p-2 rounded-lg">
+            <p class="text-[11px] text-slate-600 line-clamp-2 leading-snug">
+                ${escapeHtml(i.resumen)}
+            </p>
+        </div>
+        ${extraBadge}
+        <div class="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-100">
+            <span class="truncate max-w-[140px]"><i class="mdi mdi-account-edit-outline mr-0.5"></i> ${escapeHtml(getNombreUsuario(i.creado_por))}</span>
+            <span class="font-medium text-slate-500 shrink-0">${formatearFechaCorta(i.fecha_creacion)}</span>
+        </div>
+    </div>`;
+}
+
+let _drawerInformeId = null;
+
+function abrirDrawerInforme(id) {
+    const informe = getInforme(id);
+    if (!informe) return;
+    const perfil = getPerfil();
+    const esDestinatario = informe.derivado_a === perfil?.id;
+    if (perfil?.rol === 'doe' && !esDestinatario && informe.estado !== 'archivado' && informe.estado !== 'anulado') {
+        return mostrarToast('No tiene permiso para ver este informe', 'error');
+    }
+    _drawerInformeId = id;
+
+    const drawer = document.getElementById('slideOverDrawer');
+    const backdrop = document.getElementById('drawerBackdrop');
+    if (!drawer || !backdrop) return;
+
+    renderDrawer(informe);
+
+    backdrop.classList.remove('hidden');
+    drawer.classList.remove('translate-x-full');
+    document.body.classList.add('overflow-hidden');
+}
+window.abrirDrawerInforme = abrirDrawerInforme;
+
+function cerrarDrawerInforme() {
+    const drawer = document.getElementById('slideOverDrawer');
+    const backdrop = document.getElementById('drawerBackdrop');
+    if (drawer) drawer.classList.add('translate-x-full');
+    if (backdrop) backdrop.classList.add('hidden');
+    _drawerInformeId = null;
+    const modal = document.getElementById('modalDetalle');
+    if (!modal || modal.classList.contains('hidden')) {
+        document.body.classList.remove('overflow-hidden');
+    }
+}
+window.cerrarDrawerInforme = cerrarDrawerInforme;
+
+function renderDrawer(informe) {
+    const alumno = getAlumno(informe.alumno_id);
+    const esRegente = getPerfil()?.rol === 'regente';
+    const esDestinatario = informe.derivado_a === getPerfil()?.id;
+    const anio = new Date(informe.fecha_creacion || Date.now()).getFullYear();
+    const numeroStr = (informe.numero !== null && informe.numero !== undefined) ? String(informe.numero).padStart(3, '0') : informe.id.slice(0, 4);
+    const codigo = `#${anio}-${numeroStr}`;
+
+    const anteriores = informes.filter(x => x.alumno_id === informe.alumno_id && x.id !== informe.id);
+    const cantAnteriores = anteriores.length;
+
+    const instanceMap = {
+        leve: { label: 'Leve', badge: 'bg-amber-50 text-amber-700 border-amber-300' },
+        grave: { label: 'Grave', badge: 'bg-orange-50 text-orange-700 border-orange-300' },
+        muy_grave: { label: 'Muy Grave', badge: 'bg-red-50 text-red-700 border-red-300' },
+        consejo_aula: { label: 'Consejo Aula', badge: 'bg-pink-50 text-pink-700 border-pink-300' },
+        consejo: { label: 'Consejo Escolar', badge: 'bg-purple-50 text-purple-700 border-purple-300' }
+    };
+    const inst = instanceMap[informe.instancia] || { label: informe.instancia, badge: 'bg-blue-50 text-blue-700 border-blue-300' };
+
+    const cat = categorias.find(c => c.id === informe.categoria_id);
+    const dest = getUsuario(informe.derivado_a);
+
+    const drawerBadgeInstancia = document.getElementById('drawerBadgeInstancia');
+    const drawerNumero = document.getElementById('drawerNumero');
+    const btnDrawerVerExpedienteHeader = document.getElementById('btnDrawerVerExpedienteHeader');
+    if (drawerBadgeInstancia) {
+        drawerBadgeInstancia.textContent = inst.label;
+        drawerBadgeInstancia.className = `px-2.5 py-0.5 rounded-full text-xs font-bold border ${inst.badge}`;
+    }
+    if (drawerNumero) drawerNumero.textContent = codigo;
+    if (btnDrawerVerExpedienteHeader) {
+        btnDrawerVerExpedienteHeader.onclick = () => {
+            cerrarDrawerInforme();
+            verDetalle(informe.id);
+        };
+    }
+
+    const body = document.getElementById('drawerScrollableBody');
+    if (body) {
+        body.innerHTML = `
+            <!-- TARJETA DEL ALUMNO Y CURSO -->
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex items-start justify-between">
+                <div>
+                    <h3 onclick="cerrarDrawerInforme(); verAlumno('${alumno?.id}')" class="text-base font-bold text-slate-900 hover:text-blue-600 cursor-pointer transition-colors" title="Ver legajo completo">
+                        ${alumno ? `${escapeHtml(alumno.apellido)}, ${escapeHtml(alumno.nombre)}` : 'Desconocido'}
+                        <i class="mdi mdi-open-in-new text-xs text-blue-500 ml-1"></i>
+                    </h3>
+                    <p class="text-xs text-slate-600 mt-0.5">
+                        ${alumno ? `${escapeHtml(alumno.curso)} "${escapeHtml(alumno.division)}"` : ''}
+                        ${alumno?.turno ? `• Turno ${escapeHtml(alumno.turno)}` : ''}
+                        ${alumno?.especialidad && alumno.especialidad !== 'Sin especialidad' ? `• ${escapeHtml(alumno.especialidad)}` : ''}
+                    </p>
+                    <p class="text-[11px] text-slate-500 mt-1 flex items-center gap-2 font-mono">
+                        <span>DNI: ${alumno?.dni || 'S/D'}</span>
+                    </p>
+                </div>
+                <div class="text-right">
+                    <span class="inline-block px-2.5 py-1 rounded-full text-[11px] font-bold ${cantAnteriores > 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'}">
+                        ${cantAnteriores} Antecedente${cantAnteriores !== 1 ? 's' : ''} Previo${cantAnteriores !== 1 ? 's' : ''}
+                    </span>
+                </div>
+            </div>
+
+            <!-- DETALLE COMPLETO DEL HECHO -->
+            <div class="space-y-3">
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[11px] uppercase font-bold tracking-wider text-slate-400">Motivo / Título</span>
+                        ${cat ? `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">${escapeHtml(cat.nombre)}</span>` : ''}
+                    </div>
+                    <p class="text-xs font-semibold text-slate-800 bg-white p-3 rounded-lg border-l-4 border-l-blue-600 shadow-2xs">
+                        ${escapeHtml(informe.titulo)}
+                    </p>
+                </div>
+
+                <div>
+                    <span class="text-[11px] uppercase font-bold tracking-wider text-slate-400 block mb-1">Descripción Circunstanciada</span>
+                    <p class="text-xs text-slate-700 leading-relaxed bg-white border border-slate-200/80 p-3 rounded-lg whitespace-pre-wrap">
+                        ${escapeHtml(informe.resumen)}
+                    </p>
+                </div>
+
+                ${informe.observaciones ? `
+                <div>
+                    <span class="text-[11px] uppercase font-bold tracking-wider text-slate-400 block mb-1">Observaciones Previas / Medida Sugerida</span>
+                    <div class="text-xs text-slate-700 bg-amber-50/80 border border-amber-200 p-2.5 rounded-lg flex items-start gap-2 whitespace-pre-wrap">
+                        <i class="mdi mdi-alert-circle text-amber-600 text-base shrink-0 mt-0.5"></i>
+                        <span>${escapeHtml(informe.observaciones)}</span>
+                    </div>
+                </div>` : ''}
+
+                ${informe.estado === 'derivado' && informe.derivado_a ? `
+                <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs">
+                    <span class="text-[10px] font-bold uppercase text-emerald-700 block mb-0.5">Destinatario de la Derivación</span>
+                    <p class="font-semibold text-emerald-900">${dest ? `${escapeHtml(dest.apellido)}, ${escapeHtml(dest.nombre)} (${escapeHtml(dest.rol)})` : escapeHtml(getNombreUsuario(informe.derivado_a))}</p>
+                </div>` : ''}
+
+                ${informe.fecha_reunion ? `
+                <div class="p-3 bg-purple-50 border border-purple-200 rounded-lg text-xs">
+                    <span class="text-[10px] font-bold uppercase text-purple-700 block mb-0.5">Citación Programada</span>
+                    <p class="font-semibold text-purple-900">${formatearFecha(informe.fecha_reunion)}</p>
+                </div>` : ''}
+
+                ${informe.motivo_rechazo ? `
+                <div class="p-3 bg-red-50 border border-red-200 rounded-lg text-xs">
+                    <span class="text-[10px] font-bold uppercase text-red-700 block mb-0.5">Motivo de Anulación</span>
+                    <p class="text-red-800">${escapeHtml(informe.motivo_rechazo)}</p>
+                </div>` : ''}
+
+                <div class="grid grid-cols-2 gap-2 text-xs text-slate-600 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                    <div>
+                        <span class="text-[10px] text-slate-400 uppercase font-bold block">Docente / Emisor</span>
+                        <span class="font-semibold text-slate-800">${escapeHtml(getNombreUsuario(informe.creado_por))}</span>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-400 uppercase font-bold block">Fecha Emisión</span>
+                        <span class="font-semibold text-slate-800">${formatearFechaCorta(informe.fecha_creacion)}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOTÓN DESTACADO PARA ABRIR LA TRAZABILIDAD COMPLETA -->
+            <div class="bg-gradient-to-r from-blue-900 to-slate-900 text-white p-4 rounded-xl flex items-center justify-between shadow-md">
+                <div>
+                    <h4 class="text-xs font-bold text-white flex items-center gap-1.5">
+                        <i class="mdi mdi-timeline-clock-outline text-blue-400 text-base"></i>
+                        Historial y Trazabilidad del Expediente
+                    </h4>
+                    <p class="text-[11px] text-slate-300 mt-0.5">Consultá todas las etapas, intervenciones de DOE y firmas.</p>
+                </div>
+                <button onclick="cerrarDrawerInforme(); verDetalle('${informe.id}');" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg shadow-sm flex items-center gap-1.5 transition-colors shrink-0">
+                    <span>Ver Expediente</span>
+                    <i class="mdi mdi-arrow-right"></i>
+                </button>
+            </div>
+
+            <!-- NOTA RÁPIDA DE SEGUIMIENTO (PARA ROLES AUTORIZADOS) -->
+            ${(!esRegente && !esDestinatario && getPerfil()?.rol === 'doe') || informe.estado === 'archivado' || informe.estado === 'anulado' ? '' : `
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                <label class="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">Registrar Seguimiento Rápido</label>
+                <div class="flex gap-2">
+                    <input type="text" id="drawerNotaRapidaInput" placeholder="Escriba una observación o nota..." class="flex-1 text-xs px-3 py-2 bg-white border border-slate-300 rounded-lg outline-none focus:ring-1 focus:ring-blue-500">
+                    <button onclick="agregarNotaDesdeDrawer('${informe.id}')" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors shrink-0">Registrar</button>
+                </div>
+            </div>
+            `}
+        `;
+    }
+
+    const footer = document.getElementById('drawerFooterActions');
+    if (footer) {
+        let accionesHtml = '';
+        if (esRegente) {
+            if (informe.estado === 'pendiente') {
+                accionesHtml += `
+                    <button onclick="cerrarDrawerInforme(); revisarConAnimacion('${informe.id}', this)" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs">Revisar</button>
+                    <button onclick="cerrarDrawerInforme(); mostrarDerivacion('${informe.id}')" class="px-3.5 py-1.5 border border-emerald-300 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg text-xs font-semibold">Derivar</button>
+                    <button onclick="cerrarDrawerInforme(); cambiarEstado('${informe.id}', 'archivado')" class="px-3.5 py-1.5 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-xs font-bold shadow-xs">Archivar</button>
+                    <button onclick="cerrarDrawerInforme(); mostrarAnulacion('${informe.id}')" class="px-3 py-1.5 border border-red-300 text-red-700 bg-red-50 hover:bg-red-100 rounded-lg text-xs font-semibold">Anular</button>
+                `;
+            } else if (informe.estado === 'revisado') {
+                accionesHtml += `
+                    <button onclick="cerrarDrawerInforme(); mostrarDerivacion('${informe.id}')" class="px-3.5 py-1.5 border border-emerald-300 text-emerald-800 bg-emerald-50 hover:bg-emerald-100 rounded-lg text-xs font-semibold">Derivar</button>
+                    <button onclick="cerrarDrawerInforme(); cambiarEstado('${informe.id}', 'archivado')" class="px-3.5 py-1.5 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-xs font-bold shadow-xs">Archivar</button>
+                `;
+            } else if (informe.estado === 'archivado' || informe.estado === 'anulado') {
+                accionesHtml += `
+                    <button onclick="cerrarDrawerInforme(); cambiarEstado('${informe.id}', 'revisado')" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs">Volver a Revisados</button>
+                `;
+            }
+        }
+        if ((esRegente || esDestinatario) && informe.estado === 'derivado') {
+            accionesHtml += `
+                <button onclick="cerrarDrawerInforme(); cambiarEstado('${informe.id}', 'pendiente')" class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs">Devolver a Pendiente</button>
+            `;
+        }
+
+        footer.innerHTML = `
+            <div class="flex items-center gap-2">
+                <button onclick="cerrarDrawerInforme()" class="px-3 py-1.5 border border-slate-300 text-slate-600 hover:bg-slate-100 rounded-lg text-xs font-medium transition-colors">
+                    Cerrar
+                </button>
+            </div>
+            <div class="flex items-center gap-2 flex-wrap">
+                ${accionesHtml}
+            </div>
+        `;
+    }
+}
+
+window.agregarNotaDesdeDrawer = async function(informeId) {
+    const input = document.getElementById('drawerNotaRapidaInput');
+    const texto = input?.value.trim();
+    if (!texto) return mostrarToast('Escriba una nota', 'error');
+    mostrarToast('Registrando nota...', 'info');
+    await registrarHistorial(informeId, 'observaciones', texto);
+    input.value = '';
+    mostrarToast('Nota agregada al expediente');
+};
 
 function renderCardInforme(i) {
     const alumno = getAlumno(i.alumno_id);
@@ -1346,8 +1763,8 @@ function renderCardInforme(i) {
 function renderizarInformes(lista) {
     const contenedor = document.getElementById('listaInformes');
     const sinResultados = document.getElementById('sinResultados');
-    if (lista.length === 0) { contenedor.innerHTML = ''; sinResultados.classList.remove('hidden'); return; }
-    sinResultados.classList.add('hidden');
+    if (lista.length === 0) { contenedor.innerHTML = ''; sinResultados?.classList.remove('hidden'); return; }
+    sinResultados?.classList.add('hidden');
 
     // Ordenar por fecha más reciente (revisión o creación)
     const ordenados = lista.slice().sort((a, b) => {
@@ -1427,14 +1844,13 @@ window.anularDesdeDashboard = function(id, btn) {
 };
 
 window.revisarConAnimacion = async function(id, btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<span class="btn-spinner mr-2"></span> Revisando...';
-    await new Promise(r => setTimeout(r, 500));
-    btn.innerHTML = '<i class="mdi mdi-check animate-pop mr-2"></i> Revisado';
-    btn.classList.remove('bg-green-600', 'hover:bg-green-700');
-    btn.classList.add('bg-green-700');
-    await new Promise(r => setTimeout(r, 400));
-    await cambiarEstado(id, 'revisado');
+    mostrarModalFechaReunion(id, async (informeId, fechaReunion) => {
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="btn-spinner mr-2"></span> Revisando...';
+        }
+        await cambiarEstado(informeId, 'revisado', { fecha_reunion: fechaReunion });
+    });
 };
 
 async function guardarInforme(e) {
@@ -1495,11 +1911,9 @@ async function guardarInforme(e) {
                 fecha_revision: null,
                 motivo_rechazo: null
             };
-            mostrarToast('Guardando informe...', 'info');
-            const { error } = await supabaseClient.from('informes').insert(nuevo);
+            const { data: insertData, error } = await supabaseClient.from('informes').insert(nuevo);
             if (error) { return mostrarToast('Error guardando informe', 'error'); }
-            // Informe creado
-            await registrarHistorial(nuevo.id, 'creacion', `Informe creado por ${getNombreUsuario(getPerfil().id)}`);
+            // Informe creado exitosamente (el backend registra automáticamente el hito de emisión inicial en historial_informes)
             await cargarInformes();
             mostrarToast('Informe creado correctamente');
         }
@@ -1604,7 +2018,7 @@ function renderizarHistorial(historial) {
         ${historial.map((h, idx) => {
             const esUltimo = idx === historial.length - 1;
             const nombre = h.usuario_nombre || getNombreUsuario(h.usuario_id) || 'Usuario eliminado';
-            const fecha = formatearFecha(h.fecha);
+            const fecha = formatearFechaCorta(h.fecha);
             const hora = new Date(h.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
             const badge = badgeAccion[h.accion] || { label: (h.accion || 'ACCIÓN').toUpperCase(), clase: 'bg-slate-100 text-slate-700 border-slate-200' };
             const verbo = verboAccion[h.accion] || 'registrado';
@@ -1625,7 +2039,197 @@ function renderizarHistorial(historial) {
 }
 window.renderizarHistorial = renderizarHistorial;
 
-// ==================== DETALLE Y ACCIONES ====================
+// ==================== DETALLE Y ACCIONES (EXPEDIENTE PANORÁMICO) ====================
+let _informeDetalleActivoId = null;
+
+async function actualizarTimelinePanoramic(informeId, historialOpt = null) {
+    const container = document.getElementById('historialInformeTimeline');
+    const badgeCount = document.getElementById('timelineHitosCount');
+    if (!container) return;
+
+    let historial = historialOpt;
+    if (!historial) {
+        historial = await cargarHistorial(informeId);
+    }
+    if (badgeCount) {
+        badgeCount.textContent = `${historial.length} Hito${historial.length === 1 ? '' : 's'}`;
+    }
+
+    if (!historial.length) {
+        container.innerHTML = `
+            <div class="text-center py-10 px-4">
+                <i class="mdi mdi-timeline-clock-outline text-slate-300 text-3xl mb-2 block"></i>
+                <p class="text-xs text-slate-400 italic">Sin registros de auditoría en la trazabilidad.</p>
+            </div>`;
+        return;
+    }
+
+    const configEvento = {
+        creacion: {
+            titulo: 'Emisión del Informe',
+            icono: 'mdi-pencil',
+            colorIcono: 'bg-blue-600 text-white shadow-blue-500/20',
+            boxClass: 'bg-slate-50 border-slate-200 text-slate-700'
+        },
+        edicion: {
+            titulo: 'Edición del Informe',
+            icono: 'mdi-file-edit-outline',
+            colorIcono: 'bg-amber-500 text-white shadow-amber-500/20',
+            boxClass: 'bg-amber-50/70 border-amber-200 text-amber-900'
+        },
+        revision: {
+            titulo: 'Visado en Regencia',
+            icono: 'mdi-shield-search',
+            colorIcono: 'bg-amber-500 text-white shadow-amber-500/20',
+            boxClass: 'bg-amber-50/70 border-amber-200 text-amber-900'
+        },
+        derivacion: {
+            titulo: 'Derivación Gabinete DOE',
+            icono: 'mdi-hand-heart',
+            colorIcono: 'bg-emerald-600 text-white shadow-emerald-500/20',
+            boxClass: 'bg-emerald-50/70 border-emerald-200 text-emerald-900'
+        },
+        reunion: {
+            titulo: 'Citación / Reunión Programada',
+            icono: 'mdi-account-group',
+            colorIcono: 'bg-purple-600 text-white shadow-purple-500/20',
+            boxClass: 'bg-purple-50 border-purple-200 text-purple-900'
+        },
+        reunion_pospuesta: {
+            titulo: 'Reunión Pospuesta',
+            icono: 'mdi-calendar-clock',
+            colorIcono: 'bg-teal-600 text-white shadow-teal-500/20',
+            boxClass: 'bg-teal-50 border-teal-200 text-teal-900'
+        },
+        reunion_eliminada: {
+            titulo: 'Reunión Cancelada',
+            icono: 'mdi-calendar-remove',
+            colorIcono: 'bg-slate-600 text-white shadow-slate-500/20',
+            boxClass: 'bg-slate-50 border-slate-200 text-slate-700'
+        },
+        observaciones: {
+            titulo: 'Nota de Auditoría / Seguimiento',
+            icono: 'mdi-comment-text-outline',
+            colorIcono: 'bg-cyan-600 text-white shadow-cyan-500/20',
+            boxClass: 'bg-cyan-50 border-cyan-200 text-cyan-900'
+        },
+        anulado: {
+            titulo: 'Informe Anulado',
+            icono: 'mdi-cancel',
+            colorIcono: 'bg-red-600 text-white shadow-red-500/20',
+            boxClass: 'bg-red-50 border-red-200 text-red-900'
+        },
+        desanulacion: {
+            titulo: 'Desanulación de Informe',
+            icono: 'mdi-undo-variant',
+            colorIcono: 'bg-blue-600 text-white shadow-blue-500/20',
+            boxClass: 'bg-blue-50 border-blue-200 text-blue-900'
+        },
+        archivado: {
+            titulo: 'Expediente Archivado',
+            icono: 'mdi-archive',
+            colorIcono: 'bg-slate-700 text-white shadow-slate-500/20',
+            boxClass: 'bg-slate-50 border-slate-200 text-slate-700'
+        },
+        desarchivado: {
+            titulo: 'Desarchivado de Expediente',
+            icono: 'mdi-undo-variant',
+            colorIcono: 'bg-blue-600 text-white shadow-blue-500/20',
+            boxClass: 'bg-blue-50 border-blue-200 text-blue-900'
+        },
+        suspension: {
+            titulo: 'Suspensión Aplicada',
+            icono: 'mdi-alert-octagon',
+            colorIcono: 'bg-red-700 text-white shadow-red-500/20',
+            boxClass: 'bg-red-50 border-red-200 text-red-900'
+        },
+        llamado_padres: {
+            titulo: 'Llamado a Padres / Tutores',
+            icono: 'mdi-phone-alert',
+            colorIcono: 'bg-orange-600 text-white shadow-orange-500/20',
+            boxClass: 'bg-orange-50 border-orange-200 text-orange-900'
+        },
+        entrevista: {
+            titulo: 'Entrevista Pedagógica',
+            icono: 'mdi-account-voice',
+            colorIcono: 'bg-purple-600 text-white shadow-purple-500/20',
+            boxClass: 'bg-purple-50 border-purple-200 text-purple-900'
+        },
+        amonestacion: {
+            titulo: 'Amonestación Aplicada',
+            icono: 'mdi-card-bulleted',
+            colorIcono: 'bg-yellow-600 text-white shadow-yellow-500/20',
+            boxClass: 'bg-yellow-50 border-yellow-200 text-yellow-900'
+        },
+        notificacion: {
+            titulo: 'Notificación Emitida',
+            icono: 'mdi-email-alert-outline',
+            colorIcono: 'bg-cyan-600 text-white shadow-cyan-500/20',
+            boxClass: 'bg-cyan-50 border-cyan-200 text-cyan-900'
+        },
+        tarea_reparacion: {
+            titulo: 'Tarea de Reparación',
+            icono: 'mdi-hammer-wrench',
+            colorIcono: 'bg-slate-600 text-white shadow-slate-500/20',
+            boxClass: 'bg-slate-50 border-slate-200 text-slate-700'
+        }
+    };
+
+    container.innerHTML = historial.map((h, idx) => {
+        const cfg = configEvento[h.accion] || {
+            titulo: (h.accion || 'Acción').replace(/_/g, ' ').toUpperCase(),
+            icono: 'mdi-check-circle-outline',
+            colorIcono: 'bg-slate-600 text-white shadow-slate-500/20',
+            boxClass: 'bg-slate-50 border-slate-200 text-slate-700'
+        };
+        const esUltimo = idx === historial.length - 1;
+        const nombre = h.usuario_nombre || getNombreUsuario(h.usuario_id) || 'Usuario del Sistema';
+        const rolLabel = getUsuarioRolLabel(h.usuario_id);
+        const fechaStr = h.fecha ? formatearFechaCorta(h.fecha) : '';
+        const horaStr = h.fecha ? new Date(h.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }) + ' hs' : '';
+
+        return `
+        <div class="flex gap-3 relative">
+            <div class="flex flex-col items-center">
+                <div class="w-8 h-8 rounded-full ${cfg.colorIcono} flex items-center justify-center text-sm font-bold shadow-md z-10 shrink-0">
+                    <i class="mdi ${cfg.icono}"></i>
+                </div>
+                ${!esUltimo ? '<div class="w-0.5 bg-slate-200 flex-1 my-1"></div>' : ''}
+            </div>
+            <div class="flex-1 ${!esUltimo ? 'pb-5' : ''}">
+                <div class="flex items-center justify-between gap-2 flex-wrap">
+                    <span class="text-xs font-bold text-slate-900">${escapeHtml(cfg.titulo)}</span>
+                    <span class="text-[10px] font-mono text-slate-400">${escapeHtml(fechaStr)}${horaStr ? ' • ' + escapeHtml(horaStr) : ''}</span>
+                </div>
+                <p class="text-[11px] text-slate-500 mt-0.5">Por: <strong class="text-slate-700">${escapeHtml(nombre)}</strong>${rolLabel ? ` <span class="text-slate-400">(${escapeHtml(rolLabel)})</span>` : ''}</p>
+                ${h.detalle ? `
+                <div class="mt-2 text-xs p-2.5 rounded-lg border leading-relaxed ${cfg.boxClass}">
+                    ${escapeHtml(h.detalle)}
+                </div>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+window.actualizarTimelinePanoramic = actualizarTimelinePanoramic;
+
+let _guardandoNotaTimeline = false;
+async function agregarNotaTimeline(informeId) {
+    if (_guardandoNotaTimeline) return;
+    const input = document.getElementById('inputNotaTimeline');
+    const texto = input?.value.trim();
+    if (!texto) return mostrarToast('Ingrese una nota para el timeline', 'error');
+    _guardandoNotaTimeline = true;
+    try {
+        await registrarHistorial(informeId, 'observaciones', texto);
+        await actualizarTimelinePanoramic(informeId);
+        if (input) input.value = '';
+        mostrarToast('Nota registrada en la trazabilidad');
+    } finally {
+        _guardandoNotaTimeline = false;
+    }
+}
+window.agregarNotaTimeline = agregarNotaTimeline;
+
 function verDetalle(id) {
     const informe = getInforme(id);
     if (!informe) return;
@@ -1633,107 +2237,296 @@ function verDetalle(id) {
     if (getPerfil()?.rol === 'doe' && !esDestinatario) {
         return mostrarToast('No tiene permiso para ver este informe', 'error');
     }
+
+    _informeDetalleActivoId = informe.id;
+    cerrarDrawerInforme();
+
     const alumno = getAlumno(informe.alumno_id);
     const modal = document.getElementById('modalDetalle');
-    const contenido = document.getElementById('contenidoModal');
+    const headerEl = document.getElementById('modalDetalleHeader');
+    const colIzquierda = document.getElementById('modalDetalleColIzquierda');
     const acciones = document.getElementById('accionesModal');
+
     const esDOE = getPerfil()?.rol === 'doe';
     const esRegente = getPerfil()?.rol === 'regente';
     const puedeEditar = (informe.creado_por === getPerfil().id && informe.estado === 'pendiente' && !esDOE) || (esRegente && informe.estado !== 'archivado' && informe.estado !== 'anulado');
 
-    contenido.innerHTML = `
-        <div class="flex items-center gap-3 mb-4 flex-wrap">
-            <span class="status-${escapeAttr(informe.estado)} px-3 py-1 rounded-full text-sm font-medium capitalize">${escapeHtml(informe.estado.replace('_', ' '))}</span>
-            <span class="text-sm text-slate-500">${formatearFecha(informe.fecha_creacion)}</span>
-            ${informe.numero !== null && informe.numero !== undefined ? `<span class="text-lg font-mono font-bold text-slate-800 bg-slate-100 px-3 py-1 rounded border border-slate-200">Informe N° ${escapeHtml(informe.numero)}</span>` : `<span class="text-sm text-red-500 italic">Sin numerar</span>`}
-        </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div class="p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors" onclick="verAlumno('${alumno?.id}')">
-                <p class="text-xs text-slate-500 mb-1">Alumno</p>
-                <p class="font-medium">${alumno ? `${escapeHtml(alumno.apellido)}, ${escapeHtml(alumno.nombre)}` : 'Desconocido'}</p>
-                <p class="text-sm text-slate-600">${alumno ? `${escapeHtml(alumno.curso)} ${escapeHtml(alumno.division)}${alumno.turno ? ' · ' + escapeHtml(alumno.turno) : ''}${alumno.especialidad && alumno.especialidad !== 'Sin especialidad' ? ' · ' + escapeHtml(alumno.especialidad) : ''}` : ''}</p>
-                <p class="text-xs text-blue-600 mt-1"><i class="mdi mdi-eye-outline mr-1"></i>Ver resumen</p>
-            </div>
-            <div class="p-3 bg-slate-50 rounded-lg">
-                <p class="text-xs text-slate-500 mb-1">Creado por</p>
-                <p class="font-medium">${escapeHtml(getNombreUsuario(informe.creado_por))}</p>
-            </div>
-        </div>
-        <div class="space-y-4">
-            <div><p class="text-sm font-medium text-slate-700 mb-1">Título</p><p class="text-slate-600">${escapeHtml(informe.titulo)}</p></div>
-            <div class="grid grid-cols-2 gap-4">
-                <div><p class="text-sm font-medium text-slate-700 mb-1">Instancia</p>
-                    <p class="text-slate-600 capitalize font-medium ${informe.instancia === 'muy_grave' ? 'text-red-600' : informe.instancia === 'grave' ? 'text-orange-600' : informe.instancia === 'leve' ? 'text-amber-600' : informe.instancia === 'consejo_aula' ? 'text-pink-600' : informe.instancia === 'consejo' ? 'text-purple-600' : 'text-blue-600'}">${escapeHtml(informe.instancia.replace('_', ' '))}</p>
+    const numDoc = formatearNumeroInforme(informe);
+    const cat = categorias.find(c => c.id === informe.categoria_id);
+    const catNombre = cat ? cat.nombre : 'Sin categoría';
+    const catColor = cat ? cat.color : '#64748b';
+
+    const labelInstancia = {
+        leve: 'Leve',
+        grave: 'Grave',
+        muy_grave: 'Muy Grave',
+        consejo_aula: 'Consejo de Aula',
+        consejo: 'Consejo Escolar de Convivencia'
+    };
+    const badgeInstanciaDark = {
+        leve: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+        grave: 'bg-orange-500/20 text-orange-300 border-orange-500/30',
+        muy_grave: 'bg-red-500/20 text-red-300 border-red-500/30',
+        consejo_aula: 'bg-pink-500/20 text-pink-300 border-pink-500/30',
+        consejo: 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+    };
+    const badgeStatusDark = {
+        pendiente: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+        revisado: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+        derivado: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+        archivado: 'bg-slate-700/60 text-slate-300 border-slate-600',
+        anulado: 'bg-red-500/20 text-red-300 border-red-500/30'
+    };
+    const labelStatus = {
+        pendiente: 'Por Revisar',
+        revisado: 'Revisado / Citación',
+        derivado: 'Derivado DOE',
+        archivado: 'Archivado',
+        anulado: 'Anulado'
+    };
+
+    // Header del modal panorámico (bg-slate-950)
+    if (headerEl) {
+        headerEl.innerHTML = `
+            <div class="flex items-center gap-3 min-w-0">
+                <div class="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
+                    <i class="mdi mdi-file-document-check"></i>
                 </div>
-                <div><p class="text-sm font-medium text-slate-700 mb-1">Creado por</p><p class="text-slate-600">${escapeHtml(getNombreUsuario(informe.creado_por))}</p></div>
+                <div class="min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h2 class="text-base font-bold text-white tracking-tight">Expediente Disciplinario ${escapeHtml(numDoc)}</h2>
+                        <span class="${badgeInstanciaDark[informe.instancia] || 'bg-slate-800 text-slate-300 border-slate-700'} border text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">
+                            ${escapeHtml(labelInstancia[informe.instancia] || informe.instancia)}
+                        </span>
+                        <span class="${badgeStatusDark[informe.estado] || 'bg-slate-800 text-slate-300 border-slate-700'} border text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                            ${escapeHtml(labelStatus[informe.estado] || informe.estado)}
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-0.5 truncate">
+                        Alumno: <strong class="text-white">${alumno ? `${escapeHtml(alumno.apellido)}, ${escapeHtml(alumno.nombre)}` : 'Desconocido'}</strong>
+                        ${alumno ? ` • ${escapeHtml(alumno.curso)} ${escapeHtml(alumno.division)}${alumno.turno ? ' (' + escapeHtml(alumno.turno) + ')' : ''}${alumno.dni ? ' • DNI ' + escapeHtml(alumno.dni) : ''}` : ''}
+                    </p>
+                </div>
             </div>
-            ${informe.estado === 'derivado' && informe.derivado_a ? `<div class="p-3 bg-green-50 border border-green-200 rounded-lg"><p class="text-sm font-medium text-green-800 mb-1">Derivado a</p><p class="text-green-700">${escapeHtml(getNombreUsuario(informe.derivado_a))}</p></div>` : ''}
-            <div><p class="text-sm font-medium text-slate-700 mb-1">Descripción de la problemática</p><p class="text-slate-600 whitespace-pre-wrap">${escapeHtml(informe.resumen)}</p></div>
-
-            ${informe.observaciones ? `<div class="p-3 bg-blue-50 border border-blue-200 rounded-lg"><p class="text-sm font-medium text-blue-800 mb-1">Observaciones previas</p><p class="text-blue-700 whitespace-pre-wrap">${escapeHtml(informe.observaciones)}</p></div>` : ''}
-            ${informe.motivo_rechazo ? `<div class="p-3 bg-red-50 border border-red-200 rounded-lg"><p class="text-sm font-medium text-red-800 mb-1">Motivo de la anulación</p><p class="text-red-700">${escapeHtml(informe.motivo_rechazo)}</p></div>` : ''}
-            ${informe.fecha_revision ? `<div class="text-sm text-slate-500"><i class="mdi mdi-check-all mr-1"></i>Revisado por ${escapeHtml(getNombreUsuario(informe.revisado_por))} el ${formatearFecha(informe.fecha_revision)}</div>` : ''}
-        </div>
-        
-        <div class="mt-6 border-t border-slate-200 pt-4">
-            <h4 class="text-sm font-semibold text-slate-700 mb-3"><i class="mdi mdi-history mr-2 text-blue-500"></i>Historial del informe</h4>
-            <div id="historialInforme">Cargando historial...</div>
-        </div>
-        
-        ${(!esDOE || informe.estado === 'derivado') && informe.estado !== 'archivado' && informe.estado !== 'anulado' ? `
-        <div class="mt-6 border-t border-slate-200 pt-4 space-y-4">
-            <h4 class="text-sm font-semibold text-slate-700"><i class="mdi mdi-plus-circle-outline mr-2 text-green-500"></i>Agregar seguimiento</h4>
-            
-            <div class="p-3 bg-slate-50 rounded-lg space-y-2">
-                <label class="text-xs font-medium text-slate-600">Nueva observación</label>
-                <textarea id="nuevaObservacionTexto" rows="2" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none text-sm" placeholder="Escriba una observación..."></textarea>
-                <button onclick="agregarObservacion('${informe.id}')" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors">Agregar observación</button>
+            <div class="flex items-center gap-2 shrink-0">
+                <button onclick="exportarPDF('${informe.id}')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors" title="Exportar expediente en formato oficial PDF">
+                    <i class="mdi mdi-printer"></i>
+                    <span class="hidden sm:inline">Imprimir Acta PDF</span>
+                </button>
+                <button onclick="cerrarModal()" class="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors" title="Cerrar ventana">
+                    <i class="mdi mdi-close text-xl"></i>
+                </button>
             </div>
-            
-            <div class="p-3 bg-slate-50 rounded-lg space-y-2">
-                <label class="text-xs font-medium text-slate-600">Acción tomada</label>
-                <input type="text" id="nuevaAccionTipo" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="Ej: Suspensión, Llamado a padres, Entrevista...">
-                <textarea id="nuevaAccionDetalle" rows="2" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none text-sm" placeholder="Detalle de la acción..."></textarea>
-                <button onclick="agregarAccion('${informe.id}')" class="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors">Agregar acción</button>
+        `;
+    }
+
+    // Columna Izquierda: Expediente, Hechos y Antecedentes
+    const anteriores = informes.filter(i => i.alumno_id === informe.alumno_id && i.id !== informe.id);
+
+    if (colIzquierda) {
+        colIzquierda.innerHTML = `
+            <!-- SÍNTESIS DE LA FALTA Y HECHOS CIRCUNSTANCIADOS -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
+                    <div class="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider">
+                        <i class="mdi mdi-alert-circle-outline text-red-600 text-base"></i>
+                        <span>Relato Circunstanciado del Incidente</span>
+                    </div>
+                    <span class="text-xs text-slate-400 font-medium">${formatearFecha(informe.fecha_creacion)}</span>
+                </div>
+
+                <div>
+                    <div class="flex items-center gap-2 mb-1.5">
+                        <span class="px-2 py-0.5 rounded-full text-[11px] font-semibold" style="background-color: ${catColor}15; color: ${catColor}; border: 1px solid ${catColor}40;">
+                            ${escapeHtml(catNombre)}
+                        </span>
+                    </div>
+                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Motivo Tipificado</span>
+                    <p class="text-sm font-bold text-slate-800 mt-0.5">${escapeHtml(informe.titulo)}</p>
+                </div>
+
+                <div>
+                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Descripción Documentada</span>
+                    <p class="text-xs text-slate-700 leading-relaxed mt-1 bg-slate-50 p-3.5 rounded-lg border border-slate-100 whitespace-pre-wrap">${escapeHtml(informe.resumen)}</p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
+                    <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                        <span class="text-[10px] text-slate-400 font-bold uppercase block">Docente Redactor</span>
+                        <span class="font-semibold text-slate-800">${escapeHtml(getNombreUsuario(informe.creado_por))}</span>
+                        <span class="text-slate-500 block text-[11px]">${escapeHtml(getUsuarioRolLabel(informe.creado_por))}</span>
+                    </div>
+                    ${informe.revisado_por ? `
+                    <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                        <span class="text-[10px] text-slate-400 font-bold uppercase block">Visado en Regencia</span>
+                        <span class="font-semibold text-slate-800">${escapeHtml(getNombreUsuario(informe.revisado_por))}</span>
+                        <span class="text-slate-500 block text-[11px]">${formatearFecha(informe.fecha_revision)}</span>
+                    </div>` : `
+                    <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+                        <span class="text-[10px] text-slate-400 font-bold uppercase block">Estado Administrativo</span>
+                        <span class="font-semibold text-amber-700">Pendiente de Visado</span>
+                        <span class="text-slate-500 block text-[11px]">Bandeja de Regencia</span>
+                    </div>`}
+                </div>
+
+                ${informe.estado === 'derivado' && informe.derivado_a ? `
+                <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-800 block">Derivación Activa</span>
+                        <p class="text-xs text-emerald-900 font-semibold mt-0.5">Destinatario: ${escapeHtml(getNombreUsuario(informe.derivado_a))} (${escapeHtml(getUsuarioRolLabel(informe.derivado_a))})</p>
+                    </div>
+                    <i class="mdi mdi-hand-heart text-emerald-600 text-xl"></i>
+                </div>` : ''}
+
+                ${informe.fecha_reunion ? `
+                <div class="p-3 bg-purple-50 border border-purple-200 rounded-lg flex items-center justify-between">
+                    <div>
+                        <span class="text-[10px] font-bold uppercase tracking-wider text-purple-800 block">Citación Programada con Padres / Tutores</span>
+                        <p class="text-xs text-purple-900 font-semibold mt-0.5">${formatearFecha(informe.fecha_reunion)}</p>
+                    </div>
+                    <i class="mdi mdi-calendar-clock text-purple-600 text-xl"></i>
+                </div>` : ''}
+
+                ${informe.observaciones ? `
+                <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs space-y-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-blue-800 block flex items-center gap-1">
+                        <i class="mdi mdi-information-outline"></i> Observaciones Previas / Acuerdos
+                    </span>
+                    <p class="text-blue-900 leading-relaxed whitespace-pre-wrap">${escapeHtml(informe.observaciones)}</p>
+                </div>` : ''}
+
+                ${informe.motivo_rechazo ? `
+                <div class="p-3 bg-red-50 border border-red-200 rounded-lg text-xs space-y-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-red-800 block flex items-center gap-1">
+                        <i class="mdi mdi-alert-circle"></i> Motivo de la Anulación
+                    </span>
+                    <p class="text-red-900 leading-relaxed">${escapeHtml(informe.motivo_rechazo)}</p>
+                </div>` : ''}
             </div>
-        </div>
-        ` : ''}
-    `;
 
-    cargarHistorial(informe.id).then(historial => {
-        const container = document.getElementById('historialInforme');
-        if (container) container.innerHTML = renderizarHistorial(historial);
-    });
+            <!-- REGISTRO DISCIPLINARIO PREVIO DEL ALUMNO (LEGAJO) -->
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs space-y-3">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="mdi mdi-folder-account-outline text-blue-600 text-base"></i>
+                        Registro Disciplinario Previo en el Ciclo
+                    </h4>
+                    <span class="text-xs font-bold ${anteriores.length > 0 ? 'text-amber-700 bg-amber-50 border-amber-200' : 'text-slate-500 bg-slate-100 border-slate-200'} px-2 py-0.5 rounded-full border">
+                        ${anteriores.length} Acta${anteriores.length === 1 ? '' : 's'} Previa${anteriores.length === 1 ? '' : 's'}
+                    </span>
+                </div>
 
-    acciones.innerHTML = '';
-    if (puedeEditar) {
-        acciones.innerHTML += `<button onclick="editarInforme('${informe.id}')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="mdi mdi-pencil-outline mr-2"></i>Editar</button>`;
+                ${anteriores.length === 0 ? `
+                <p class="text-xs text-slate-400 italic py-2">Sin antecedentes disciplinarios previos registrados en el ciclo lectivo actual.</p>
+                ` : `
+                <div class="space-y-2 text-xs">
+                    ${anteriores.slice(0, 5).map(ant => `
+                    <div onclick="verDetalle('${ant.id}')" class="p-2.5 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 flex items-start justify-between gap-3 cursor-pointer transition-colors">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="font-bold text-slate-800">${formatearFechaCorta(new Date(ant.fecha_creacion))} • ${escapeHtml(formatearNumeroInforme(ant))}</span>
+                                <span class="text-[10px] font-semibold capitalize ${ant.instancia === 'muy_grave' ? 'text-red-600' : ant.instancia === 'grave' ? 'text-orange-600' : 'text-amber-600'}">(${escapeHtml(ant.instancia.replace('_', ' '))})</span>
+                            </div>
+                            <p class="text-slate-600 mt-0.5 line-clamp-1">${escapeHtml(ant.titulo)}</p>
+                        </div>
+                        <span class="status-${escapeAttr(ant.estado)} text-[10px] font-medium px-2 py-0.5 rounded-full capitalize shrink-0">${escapeHtml(ant.estado.replace('_', ' '))}</span>
+                    </div>`).join('')}
+                </div>`}
+                
+                ${alumno ? `
+                <div class="pt-1 flex justify-end">
+                    <button onclick="verAlumno('${alumno.id}')" class="text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 transition-colors">
+                        <i class="mdi mdi-open-in-new"></i> Ver Legajo Completo del Alumno
+                    </button>
+                </div>` : ''}
+            </div>
+
+            <!-- SECCIÓN DE SEGUIMIENTO Y ACCIONES CONTEXTUALES -->
+            ${(!esDOE || informe.estado === 'derivado') && informe.estado !== 'archivado' && informe.estado !== 'anulado' ? `
+            <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-2xs space-y-4">
+                <div class="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    <i class="mdi mdi-plus-circle-outline text-blue-600 text-base"></i>
+                    <span>Registrar Seguimiento Institucional</span>
+                </div>
+                
+                <div class="space-y-2">
+                    <label class="text-xs font-medium text-slate-600">Nueva Observación al Expediente</label>
+                    <textarea id="nuevaObservacionTexto" rows="2" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none text-xs" placeholder="Escriba una observación o avance institucional..."></textarea>
+                    <div class="flex justify-end">
+                        <button onclick="agregarObservacion('${informe.id}')" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors">Guardar Observación</button>
+                    </div>
+                </div>
+                
+                <div class="border-t border-slate-100 pt-3 space-y-2">
+                    <label class="text-xs font-medium text-slate-600">Acción Disciplinaria o Pedagógica Tomada</label>
+                    <input type="text" id="nuevaAccionTipo" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-xs" placeholder="Ej: Suspensión, Llamado a padres, Entrevista, Compromiso...">
+                    <textarea id="nuevaAccionDetalle" rows="2" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none text-xs" placeholder="Detalle circunstanciado de la resolución adoptada..."></textarea>
+                    <div class="flex justify-end">
+                        <button onclick="agregarAccion('${informe.id}')" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors">Registrar Acción</button>
+                    </div>
+                </div>
+            </div>` : ''}
+        `;
     }
-    if (esRegente) {
-        if (informe.estado === 'pendiente') {
-            acciones.innerHTML += `
-                <button id="btn-modal-revisar-${informe.id}" onclick="revisarConAnimacion('${informe.id}', this)" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="mdi mdi-eye-outline mr-2"></i>Revisado</button>
-                <button onclick="mostrarAnulacion('${informe.id}')" class="flex-1 min-w-[120px] bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition-colors"><i class="mdi mdi-cancel mr-2"></i>Anular</button>`;
-        }
-        if (informe.estado === 'revisado') {
-            acciones.innerHTML += `
-                <button onclick="cambiarEstado('${informe.id}', 'archivado')" class="flex-1 min-w-[120px] bg-slate-600 hover:bg-slate-700 text-white py-2 rounded-lg transition-colors"><i class="mdi mdi-archive-outline mr-2"></i>Archivar</button>
-                <button onclick="mostrarDerivacion('${informe.id}')" class="flex-1 min-w-[120px] bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg transition-colors"><i class="mdi mdi-share-variant-outline mr-2"></i>Derivar</button>`;
-        }
-        if (informe.estado === 'archivado') {
-            acciones.innerHTML += `<button onclick="cambiarEstado('${informe.id}', 'revisado')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="mdi mdi-undo-variant mr-2"></i>Guardar en revisados</button>`;
-        }
-        if (informe.estado === 'anulado') {
-            acciones.innerHTML += `<button onclick="cambiarEstado('${informe.id}', 'revisado')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="mdi mdi-undo-variant mr-2"></i>Guardar en revisados</button>`;
-        }
+
+    // Timeline cronológico (Columna derecha)
+    actualizarTimelinePanoramic(informe.id);
+
+    // Event listeners para agregar nota en timeline
+    const btnNota = document.getElementById('btnRegistrarNotaTimeline');
+    if (btnNota) {
+        btnNota.onclick = () => agregarNotaTimeline(informe.id);
     }
-    if ((esRegente || esDestinatario) && informe.estado === 'derivado') {
-        acciones.innerHTML += `<button onclick="cambiarEstado('${informe.id}', 'pendiente')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="mdi mdi-undo-variant mr-2"></i>Volver a pendiente</button>`;
+    const inputNota = document.getElementById('inputNotaTimeline');
+    if (inputNota) {
+        inputNota.onkeydown = (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                agregarNotaTimeline(informe.id);
+            }
+        };
     }
-    acciones.innerHTML += `<button onclick="exportarPDF('${informe.id}')" class="min-w-[120px] bg-slate-600 hover:bg-slate-700 text-white py-2 rounded-lg transition-colors"><i class="mdi mdi-file-pdf-box mr-2"></i><span class="sm:hidden">Imprimir</span><span class="hidden sm:inline">PDF</span></button>`;
-    modal.classList.remove('hidden');
-    document.body.classList.add('overflow-hidden');
+
+    // Sticky Footer Acciones
+    if (acciones) {
+        acciones.innerHTML = '';
+        acciones.innerHTML += `<button onclick="cerrarModal()" class="px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold transition-colors">Cerrar</button>`;
+
+        if (puedeEditar) {
+            acciones.innerHTML += `<button onclick="editarInforme('${informe.id}')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"><i class="mdi mdi-pencil-outline"></i><span>Editar</span></button>`;
+        }
+        if (esRegente) {
+            if (informe.estado === 'pendiente') {
+                acciones.innerHTML += `
+                    <button id="btn-modal-revisar-${informe.id}" onclick="revisarConAnimacion('${informe.id}', this)" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"><i class="mdi mdi-eye-outline"></i><span>Revisar</span></button>
+                    <button onclick="mostrarDerivacion('${informe.id}')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"><i class="mdi mdi-share-variant-outline"></i><span>Derivar</span></button>
+                    <button onclick="cambiarEstado('${informe.id}', 'archivado')" class="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"><i class="mdi mdi-archive-outline"></i><span>Archivar</span></button>
+                    <button onclick="mostrarAnulacion('${informe.id}')" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"><i class="mdi mdi-cancel"></i><span>Anular</span></button>`;
+            }
+            if (informe.estado === 'revisado') {
+                acciones.innerHTML += `
+                    <button onclick="cambiarEstado('${informe.id}', 'archivado')" class="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"><i class="mdi mdi-archive-outline"></i><span>Archivar</span></button>
+                    <button onclick="mostrarDerivacion('${informe.id}')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"><i class="mdi mdi-share-variant-outline"></i><span>Derivar</span></button>`;
+            }
+            if (informe.estado === 'archivado') {
+                acciones.innerHTML += `<button onclick="cambiarEstado('${informe.id}', 'revisado')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"><i class="mdi mdi-undo-variant"></i><span>Devolver a Revisados</span></button>`;
+            }
+            if (informe.estado === 'anulado') {
+                acciones.innerHTML += `<button onclick="cambiarEstado('${informe.id}', 'revisado')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"><i class="mdi mdi-undo-variant"></i><span>Desanular (a Revisados)</span></button>`;
+            }
+        }
+        if ((esRegente || esDestinatario) && informe.estado === 'derivado') {
+            acciones.innerHTML += `<button onclick="cambiarEstado('${informe.id}', 'pendiente')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"><i class="mdi mdi-undo-variant"></i><span>Volver a Pendiente</span></button>`;
+        }
+        acciones.innerHTML += `<button onclick="exportarPDF('${informe.id}')" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors"><i class="mdi mdi-file-pdf-box"></i><span>PDF</span></button>`;
+    }
+
+    if (modal) {
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+    }
 }
+window.verDetalle = verDetalle;
 
 let _guardandoObservacion = false;
 async function agregarObservacion(informeId) {
@@ -1744,10 +2537,8 @@ async function agregarObservacion(informeId) {
     _guardandoObservacion = true;
     try {
         await registrarHistorial(informeId, 'observaciones', texto);
-        const historial = await cargarHistorial(informeId);
-        const container = document.getElementById('historialInforme');
-        if (container) container.innerHTML = renderizarHistorial(historial);
-        textarea.value = '';
+        await actualizarTimelinePanoramic(informeId);
+        if (textarea) textarea.value = '';
         mostrarToast('Observación agregada');
     } finally {
         _guardandoObservacion = false;
@@ -1767,11 +2558,9 @@ async function agregarAccion(informeId) {
     _guardandoAccion = true;
     try {
         await registrarHistorial(informeId, tipo, detalle);
-        const historial = await cargarHistorial(informeId);
-        const container = document.getElementById('historialInforme');
-        if (container) container.innerHTML = renderizarHistorial(historial);
-        tipoInput.value = '';
-        detalleText.value = '';
+        await actualizarTimelinePanoramic(informeId);
+        if (tipoInput) tipoInput.value = '';
+        if (detalleText) detalleText.value = '';
         mostrarToast('Acción registrada');
     } finally {
         _guardandoAccion = false;
@@ -1779,7 +2568,16 @@ async function agregarAccion(informeId) {
 }
 window.agregarAccion = agregarAccion;
 
-function cerrarModal() { document.getElementById('modalDetalle').classList.add('hidden'); document.body.classList.remove('overflow-hidden'); }
+function cerrarModal() {
+    const modal = document.getElementById('modalDetalle');
+    if (modal) modal.classList.add('hidden');
+    _informeDetalleActivoId = null;
+    const drawer = document.getElementById('slideOverDrawer');
+    if (!drawer || drawer.classList.contains('translate-x-full')) {
+        document.body.classList.remove('overflow-hidden');
+    }
+}
+window.cerrarModal = cerrarModal;
 
 function cerrarModalGrupo() { document.getElementById('modalGrupoInformes').classList.add('hidden'); document.body.classList.remove('overflow-hidden'); }
 
@@ -1892,7 +2690,10 @@ async function cambiarEstado(id, nuevoEstado, options = {}) {
     await registrarHistorial(id, accionHistorial, detalleHistorial);
     await cargarInformes();
     if (!silent) mostrarToast(`Informe ${toastLabel} correctamente`);
-    if (debeCerrarModal) cerrarModal();
+    if (debeCerrarModal) {
+        cerrarModal();
+        cerrarDrawerInforme();
+    }
     if (recargarLista) filtrarInformes();
     actualizarDashboard();
 }
@@ -1965,6 +2766,8 @@ async function confirmarAnulacion() {
 
         mostrarToast('Informe anulado');
         cerrarModalAnulacion();
+        cerrarModal();
+        cerrarDrawerInforme();
         if (!vinoDesdeLista) filtrarInformes();
         actualizarDashboard();
     } catch (err) {
@@ -2031,6 +2834,7 @@ async function confirmarDerivacion() {
     mostrarToast('Informe derivado correctamente');
     cerrarModalDerivacion();
     cerrarModal();
+    cerrarDrawerInforme();
     filtrarInformes();
     actualizarDashboard();
     if (btnConfirmar) {
@@ -2060,6 +2864,7 @@ function editarInforme(id) {
     document.getElementById('tituloForm').textContent = 'Editar Informe';
     document.getElementById('txtBtnGuardar').textContent = 'Actualizar Informe';
     cerrarModal();
+    cerrarDrawerInforme();
     showSection('nuevo');
 }
 
@@ -4477,6 +5282,9 @@ window.eliminarCategoria = eliminarCategoria;
 window.mostrarDerivacion = mostrarDerivacion;
 window.cerrarModalDerivacion = cerrarModalDerivacion;
 window.confirmarDerivacion = confirmarDerivacion;
+window.mostrarAnulacion = mostrarAnulacion;
+window.cerrarModalAnulacion = cerrarModalAnulacion;
+window.confirmarAnulacion = confirmarAnulacion;
 window.toggleFormObservacion = toggleFormObservacion;
 window.guardarObservacionAlumno = guardarObservacionAlumno;
 window.eliminarObservacionAlumno = eliminarObservacionAlumno;

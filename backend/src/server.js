@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 
 import { errorHandler } from './middlewares/errorHandler.js';
 import { authMiddleware, requireRole } from './middlewares/authMiddleware.js';
+import { ensureDatabaseReady } from './config/db.js';
 
 import * as authCtrl from './controllers/authController.js';
 import * as informesCtrl from './controllers/informesController.js';
@@ -46,6 +47,8 @@ app.put('/api/informes/:id', authMiddleware, informesCtrl.actualizarInforme);
 app.put('/api/informes/:id/estado', authMiddleware, informesCtrl.cambiarEstado);
 app.get('/api/informes/:id/historial', authMiddleware, informesCtrl.listarHistorial);
 app.post('/api/informes/:id/historial', authMiddleware, informesCtrl.agregarHistorial);
+app.post('/api/informes/:id/observaciones', authMiddleware, informesCtrl.agregarHistorial);
+app.post('/api/informes/:id/acciones', authMiddleware, informesCtrl.agregarHistorial);
 
 // Rutas de Alumnos
 app.get('/api/alumnos', authMiddleware, alumnosCtrl.listarAlumnos);
@@ -87,6 +90,11 @@ app.put('/api/usuarios/:id/password', authMiddleware, usuariosCtrl.cambiarPasswo
 // Middleware centralizado de errores
 app.use(errorHandler);
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[GIE-BACKEND] Servidor API escuchando en http://0.0.0.0:${PORT}`);
+ensureDatabaseReady().then(() => {
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`[GIE-BACKEND] Servidor API escuchando en http://0.0.0.0:${PORT}`);
+    });
+}).catch((err) => {
+    console.error('[GIE-BACKEND] Error fatal al inicializar base de datos:', err);
+    process.exit(1);
 });
