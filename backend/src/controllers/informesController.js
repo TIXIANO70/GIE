@@ -1,5 +1,6 @@
 import { query } from '../config/db.js';
 import { esRegente } from '../middlewares/authMiddleware.js';
+import { despacharNotificacionYAuditar, esInstanciaCritica } from '../services/avisosClient.js';
 
 export async function listarInformes(req, res, next) {
     try {
@@ -190,6 +191,17 @@ export async function crearInforme(req, res, next) {
             [nuevo.id, req.user.id, 'pendiente', 'Informe redactado y enviado a revisión inicial']
         );
 
+        if (fecha_reunion && String(fecha_reunion).trim() && fecha_reunion !== 'NULL') {
+            await despacharNotificacionYAuditar({
+                queryFn: query,
+                evento: 'citacion_reunion',
+                informe: { id: nuevo.id, codigo, instancia, titulo, resumen, estado: 'pendiente' },
+                alumnoId: alumno_id,
+                user: req.user,
+                fechaReunion: String(fecha_reunion).split('T')[0],
+            });
+        }
+
         res.status(201).json({
             ok: true,
             data: { id: nuevo.id, numero: nuevo.numero, codigo }
@@ -204,7 +216,12 @@ export async function actualizarInforme(req, res, next) {
         const { id } = req.params;
         const { rol, id: userId, email: userEmail } = req.user;
 
-        const check = await query('SELECT creado_por, estado, derivado_a FROM informes WHERE id = $1', [id]);
+        const check = await query(
+            `SELECT creado_por, estado, derivado_a, alumno_id, codigo, instancia, titulo, resumen,
+                    to_char(fecha_reunion, 'YYYY-MM-DD') AS fecha_reunion_str
+             FROM informes WHERE id = $1`,
+            [id]
+        );
         if (check.rows.length === 0) {
             return res.status(404).json({ error: 'Informe no encontrado' });
         }
@@ -249,7 +266,9 @@ export async function actualizarInforme(req, res, next) {
                 derivado_a = COALESCE($14, derivado_a),
                 updated_at = NOW()
             WHERE id = $15
-            RETURNING id, codigo, estado, revisado_por, fecha_revision, updated_at
+            RETURNING id, codigo, alumno_id, instancia, titulo, resumen,
+                      to_char(fecha_reunion, 'YYYY-MM-DD') AS fecha_reunion_str,
+                      estado, revisado_por, fecha_revision, updated_at
         `;
 
         const fechaReunionParam = fecha_reunion === null ? 'NULL' : (fecha_reunion || null);
@@ -269,7 +288,28 @@ export async function actualizarInforme(req, res, next) {
             );
         }
 
-        res.json({ ok: true, data: rows[0] });
+        const actualizado = rows[0];
+        const nuevaFechaReunion = actualizado.fecha_reunion_str || null;
+        const fechaReunionCambio = Boolean(
+            fecha_reunion && fecha_reunion !== 'NULL' && nuevaFechaReunion && nuevaFechaReunion !== actual.fecha_reunion_str
+        );
+        const pasoARevisadoCritico = Boolean(
+            estado && estado !== actual.estado && estado === 'revisado' && esInstanciaCritica(actualizado.instancia)
+        );
+
+        if (fechaReunionCambio || pasoARevisadoCritico) {
+            const evento = fechaReunionCambio ? 'citacion_reunion' : 'informe_disciplinario';
+            await despacharNotificacionYAuditar({
+                queryFn: query,
+                evento,
+                informe: actualizado,
+                alumnoId: actualizado.alumno_id,
+                user: req.user,
+                fechaReunion: nuevaFechaReunion,
+            });
+        }
+
+        res.json({ ok: true, data: actualizado });
     } catch (err) {
         next(err);
     }
@@ -281,7 +321,12 @@ export async function cambiarEstado(req, res, next) {
         const { nuevo_estado, motivo, derivado_a } = req.body;
         const { rol, id: userId, email: userEmail } = req.user;
 
-        const check = await query('SELECT estado, derivado_a FROM informes WHERE id = $1', [id]);
+        const check = await query(
+            `SELECT estado, derivado_a, alumno_id, codigo, instancia, titulo, resumen,
+                    to_char(fecha_reunion, 'YYYY-MM-DD') AS fecha_reunion_str
+             FROM informes WHERE id = $1`,
+            [id]
+        );
         if (check.rows.length === 0) {
             return res.status(404).json({ error: 'Informe no encontrado' });
         }
@@ -330,6 +375,18 @@ export async function cambiarEstado(req, res, next) {
             'INSERT INTO historial_informes (informe_id, usuario_id, estado_anterior, estado_nuevo, motivo) VALUES ($1, $2, $3, $4, $5)',
             [id, userId, estadoAnterior, nuevo_estado, motivo || `Transición a ${nuevo_estado}`]
         );
+
+        if (nuevo_estado === 'revisado' && estadoAnterior !== 'revisado' && esInstanciaCritica(actual.instancia)) {
+            const evento = actual.fecha_reunion_str ? 'citacion_reunion' : 'informe_disciplinario';
+            await despacharNotificacionYAuditar({
+                queryFn: query,
+                evento,
+                informe: { ...actual, id, estado: nuevo_estado },
+                alumnoId: actual.alumno_id,
+                user: req.user,
+                fechaReunion: actual.fecha_reunion_str || null,
+            });
+        }
 
         res.json({ ok: true, data: rows[0] });
     } catch (err) {

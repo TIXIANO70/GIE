@@ -3,6 +3,7 @@ import html2pdf from 'html2pdf.js/dist/html2pdf.bundle.min.js';
 import { USE_SUPABASE, supabaseClient, GIE_URL, GIE_KEY } from './config.js';
 import { getPerfil, setPerfil, esRegente, setPerfilCursos, showLogin, showApp, restoreSession, doLogout, updateAuthUI, setupLoginForm, setupLoginBanner } from './auth.js';
 import { sincronizarAlumnosDesdeEdge } from './sync-alumnos-edge.js';
+import '@mdi/font/css/materialdesignicons.min.css';
 import './styles.css';
 
 // ==================== ESTADO GLOBAL ====================
